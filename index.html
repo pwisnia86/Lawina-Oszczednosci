@@ -1,0 +1,4104 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="dark" />
+<title>Lawina oszczędności — wizualizacja wzrostu kapitału</title>
+<style>
+/* =====================================================================
+   LAWINA OSZCZĘDNOŚCI — arkusz stylów
+   Motyw: ciemny, „fintechowy” z akcentami mięty (kapitał), złota (odsetki)
+   i fioletu (banknot 500 zł). Kolory kropek = barwy nominałów PLN.
+   ===================================================================== */
+:root{
+  --bg:#070b16;
+  --card-a:rgba(255,255,255,.055);
+  --card-b:rgba(255,255,255,.022);
+  --stroke:rgba(255,255,255,.10);
+  --stroke-2:rgba(255,255,255,.18);
+  --txt:#e9edfb;
+  --muted:#8e9bc0;
+  --mint:#5fe3c0;
+  --mint-soft:rgba(95,227,192,.14);
+  --green:#57d98a;            /* akcent: wydarzenia / ożywienie motywu */
+  --green-soft:rgba(87,217,138,.14);
+  --gold:#f6c463;
+  --gold-soft:rgba(246,196,99,.14);
+  --violet:#8b7cff;
+  --danger:#ff8095;
+  --danger-soft:rgba(255,128,149,.12);
+  --radius:16px;
+  --shadow:0 18px 40px rgba(0,0,0,.45);
+  --font:"Inter","Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:var(--font);
+  color:var(--txt);
+  background:
+    radial-gradient(1100px 620px at 12% -8%, #143a4e 0%, transparent 58%),
+    radial-gradient(900px 520px at 98% -6%, #2c1f57 0%, transparent 55%),
+    radial-gradient(1000px 620px at 0% 104%, rgba(22,110,80,.30) 0%, transparent 62%),
+    var(--bg);
+  min-height:100vh;
+  display:flex;flex-direction:column;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{width:100%;max-width:1480px;margin:0 auto;padding:18px 18px 10px;display:flex;flex-direction:column;gap:14px;flex:1}
+
+/* ---------------- nagłówek ---------------- */
+/* v15: nagłówek przykleja się do góry — „Wiek” (i reszta informacji) jest
+   wtedy widoczny także po przewinięciu ekranu w dół. */
+header.top{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+  position:sticky;top:0;z-index:35;
+  margin:-18px -18px 0;padding:12px 18px 10px;
+  background:linear-gradient(180deg,rgba(7,12,24,.97) 72%,rgba(7,12,24,.82));
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid rgba(95,227,192,.14);
+}
+.brand{display:flex;align-items:center;gap:13px}
+.logo{
+  width:46px;height:46px;border-radius:15px;display:grid;place-items:center;font-size:21px;
+  background:linear-gradient(145deg,#6ee7d2,#3fbf7f);color:#0a1020;
+  box-shadow:0 10px 26px rgba(110,231,210,.28);flex:none;
+}
+.brand h1{margin:0;font-size:1.12rem;letter-spacing:.2px;font-weight:650}
+.brand p{margin:3px 0 0;color:var(--muted);font-size:.82rem;max-width:52ch}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{
+  border:1px solid var(--stroke);background:var(--card-a);border-radius:999px;
+  padding:6px 13px;font-size:.78rem;color:var(--muted);white-space:nowrap;
+}
+.chip b{color:var(--txt);font-weight:600}
+
+/* ---------------- układ ---------------- */
+/* [hidden] musi działać także dla elementów z klasami (.pending-bar itd.) */
+[hidden]{display:none !important}
+/* Mobile: jedna kolumna — scena, potem parametry i podsumowanie.
+   Tablet: dwie kolumny — przewijana kolumna z parametrami i podsumowaniem + scena.
+   Pulpit (≥1360 px): trzy kolumny — parametry | scena | podsumowanie. */
+.layout{
+  display:grid;gap:16px;
+  grid-template-columns:1fr;
+  grid-template-areas:"stage" "left";
+  grid-template-rows:auto;
+}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.col-left{grid-area:left}
+.col-stage{grid-area:stage;min-width:0}
+.card{
+  background:linear-gradient(180deg,var(--card-a),var(--card-b));
+  border:1px solid var(--stroke);border-radius:var(--radius);
+  padding:16px;box-shadow:var(--shadow);
+}
+.card-title{
+  margin:0 0 13px;font-size:.82rem;letter-spacing:.09em;text-transform:uppercase;
+  color:#c6d1ef;font-weight:650;display:flex;align-items:center;gap:8px;
+}
+.card-title::before{content:"";width:4px;height:14px;border-radius:3px;background:linear-gradient(180deg,var(--mint),var(--violet))}
+
+/* ---------------- pola formularza ---------------- */
+.field{margin-bottom:14px}
+.field>label{display:block;font-size:.8rem;color:#c3cde9;margin-bottom:6px;font-weight:550}
+.field .unit{color:var(--muted);font-weight:400}
+.input-wrap{position:relative;display:flex;align-items:center}
+.input-wrap input{
+  width:100%;padding:11px 58px 11px 13px;border-radius:11px;
+  border:1px solid var(--stroke-2);background:rgba(4,8,20,.55);color:var(--txt);
+  font-size:1rem;font-family:inherit;font-variant-numeric:tabular-nums;
+  transition:border-color .15s,box-shadow .15s;
+}
+.input-wrap input:focus{outline:none;border-color:var(--mint);box-shadow:0 0 0 3px var(--mint-soft)}
+.input-wrap .suffix{
+  position:absolute;right:12px;font-size:.8rem;color:var(--muted);pointer-events:none;font-weight:600;
+}
+.input-wrap input.invalid{border-color:var(--danger);box-shadow:0 0 0 3px var(--danger-soft)}
+.hint{margin:6px 0 0;font-size:.74rem;color:var(--muted);line-height:1.45}
+.hint b{color:#b9c5e6}
+.error{margin:6px 0 0;font-size:.76rem;color:var(--danger);font-weight:550}
+.static-value{
+  padding:11px 13px;border-radius:11px;border:1px dashed var(--stroke-2);
+  background:rgba(255,255,255,.03);font-size:.95rem;font-variant-numeric:tabular-nums;
+}
+input[type=range]{
+  -webkit-appearance:none;appearance:none;width:100%;height:24px;background:transparent;cursor:pointer;
+}
+input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:999px;background:linear-gradient(90deg,var(--mint),var(--violet))}
+input[type=range]::-moz-range-track{height:6px;border-radius:999px;background:linear-gradient(90deg,var(--mint),var(--violet))}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:#fff;margin-top:-6px;
+  border:3px solid #0b1020;box-shadow:0 2px 8px rgba(0,0,0,.5);
+}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid #0b1020}
+input[type=range].rate::-webkit-slider-runnable-track{background:linear-gradient(90deg,var(--violet),var(--gold))}
+input[type=range].rate::-moz-range-track{background:linear-gradient(90deg,var(--violet),var(--gold))}
+.validation{
+  margin:2px 0 12px;font-size:.78rem;color:var(--danger);background:var(--danger-soft);
+  border:1px solid rgba(255,128,149,.35);border-radius:10px;padding:9px 11px;display:none;
+}
+.validation.show{display:block}
+.validation.ok{color:var(--mint);background:var(--mint-soft);border-color:rgba(95,227,192,.35)}
+
+/* ---------------- pasek „Ustawienia początkowe” (nad wizualizacją) ---------------- */
+.card-settings{padding:10px 14px;
+  background:linear-gradient(180deg,rgba(87,217,138,.075),rgba(255,255,255,.022));
+  border-color:rgba(87,217,138,.18)}
+.settings-head{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;margin-bottom:9px}
+.settings-head .card-title{margin:0}
+.settings-note{font-size:.7rem;color:var(--muted);line-height:1.35;flex:1 1 260px}
+.settings-note b{color:#b9c5e6}
+/* v14t: na tablet/telefonie 3 kolumny (2 wiersze), na desktopie — patrz niżej */
+.settings-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 10px}
+.settings-grid .field{margin-bottom:0}
+.settings-grid .field>label{font-size:.72rem;margin-bottom:3px}
+.settings-grid .input-wrap input{padding:7px 42px 7px 10px;font-size:.9rem;border-radius:9px}
+.settings-grid .input-wrap .suffix{right:9px;font-size:.72rem}
+.settings-grid .hint{font-size:.67rem;margin-top:3px;line-height:1.35}
+.settings-grid .error{font-size:.7rem;margin-top:2px}
+/* v14t: pole „Twój wiek” + data urodzenia pod spodem */
+.settings-grid .field-age .input-wrap input{padding-right:34px}
+.settings-grid .field-age .suffix{right:7px;font-size:.66rem}
+.settings-grid .field-horizon .input-wrap input{padding-right:34px}
+.settings-grid .field-horizon .suffix{right:7px;font-size:.66rem}
+.settings-grid .field-age .birth{
+  width:100%;margin-top:4px;padding:4px 6px;border-radius:8px;
+  border:1px solid var(--stroke-2);background:rgba(4,8,20,.55);color:var(--txt);
+  font-family:inherit;font-size:.68rem;font-variant-numeric:tabular-nums;
+}
+.settings-grid .field-age .birth:focus{outline:none;border-color:var(--mint);box-shadow:0 0 0 3px var(--mint-soft)}
+/* v16: dłuższy nagłówek „Horyzont czasowy inwestycji” mieści się w jednym
+   wierszu dzięki szerszej ostatniej kolumnie (patrz media query 1021 px). */
+.settings-grid .field-horizon > label{line-height:1.2}
+.settings-grid input[type=range].rate{height:12px;margin-top:1px}
+.settings-grid input[type=range].rate::-webkit-slider-thumb{width:14px;height:14px;margin-top:-4px}
+.settings-grid input[type=range].rate::-moz-range-thumb{width:12px;height:12px}
+/* v14t: na desktopie WSZYSTKIE ustawienia początkowe mieszczą się w JEDNYM wierszu.
+   Pole „Stopa roczna” dostaje najwięcej miejsca, żeby jego suwak był precyzyjny. */
+@media (min-width:1021px){
+  /* v14u: siedem pól w JEDNYM wierszu; „Stopa roczna” dostaje najwięcej miejsca,
+     żeby jej suwak był precyzyjny. */
+  .settings-grid{
+    grid-template-columns:
+      minmax(0,1fr) minmax(0,1fr) minmax(0,1.5fr) minmax(0,1fr)
+      minmax(0,1.12fr) minmax(0,1.12fr) minmax(0,1.5fr);   /* v16: szersze pole horyzontu */
+    gap:8px 8px;
+  }
+}
+/* tablet: 4 kolumny (7 pól = 4 + 3, bez osieroconych pól) */
+@media (min-width:700px) and (max-width:1020px){
+  .settings-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+/* v14t: przy 1021–1279 px pola są nieco mniejsze, ale nadal w jednym wierszu. */
+@media (min-width:1021px) and (max-width:1279px){
+  .settings-grid .field>label{font-size:.64rem}
+  .settings-grid .input-wrap input{padding:5px 19px 5px 6px;font-size:.76rem}
+  .settings-grid .input-wrap .suffix{right:4px;font-size:.6rem}
+  .settings-grid .input-wrap input[type=date]{padding:5px 2px;font-size:.6rem}
+  .settings-grid .field-age .birth{font-size:.6rem;padding:4px 2px}
+}
+.settings-actions{display:flex;gap:8px;margin-left:auto}
+.settings-actions .btn{width:auto;padding:6px 11px;font-size:.74rem}
+#settingsCard .validation{margin:9px 0 0}
+
+/* ---------------- przyciski ---------------- */
+.btn{
+  border:1px solid var(--stroke-2);background:rgba(255,255,255,.06);color:var(--txt);
+  padding:10px 15px;border-radius:11px;font-family:inherit;font-size:.84rem;font-weight:600;
+  cursor:pointer;transition:background .15s,transform .08s,border-color .15s;white-space:nowrap;
+}
+.btn:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.3)}
+.btn:active{transform:translateY(1px)}
+.btn:focus-visible{outline:2px solid var(--mint);outline-offset:2px}
+.btn-primary{
+  background:linear-gradient(135deg,var(--mint),#49c9ff);border-color:transparent;color:#04131a;
+  box-shadow:0 8px 22px rgba(95,227,192,.25);
+}
+.btn-primary:hover{filter:brightness(1.08);background:linear-gradient(135deg,var(--mint),#49c9ff)}
+.btn-ghost{width:100%;background:transparent}
+.btn.active{background:var(--gold-soft);border-color:var(--gold);color:var(--gold)}
+.btn-icon{min-width:44px;text-align:center}
+
+/* ---------------- scena ---------------- */
+.stage{display:flex;flex-direction:column;padding:0;overflow:hidden}
+/* v14w: SZTYWNY układ nagłówka sceny — przy przeciąganiu osi czasu liczby
+   w kafelkach zmieniają szerokość, ale nigdy nie łamią układu (dzięki temu
+   ekran nie „skacze”: wysokość nagłówka jest zawsze taka sama). */
+.stage-head{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:nowrap;
+  padding:14px 16px;border-bottom:1px solid var(--stroke);
+}
+.stage-date{display:flex;flex-direction:column;flex:0 0 190px;min-width:0}
+.stage-date .big{font-size:1.5rem;font-weight:700;letter-spacing:.02em;font-variant-numeric:tabular-nums}
+.stage-date .small{font-size:.75rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stage-nums{display:flex;gap:8px;flex-wrap:nowrap;flex:0 0 auto;align-items:stretch}
+.num{
+  border:1px solid var(--stroke);background:rgba(255,255,255,.04);border-radius:12px;
+  padding:7px 12px;min-width:104px;
+}
+.num span{display:block;font-size:.68rem;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+.num b{font-size:1rem;font-variant-numeric:tabular-nums;font-weight:650;white-space:nowrap}
+.num.mint b{color:var(--mint)}
+.num.gold b{color:var(--gold)}
+/* stałe okienko z wyjaśnieniem łączenia kropek — widoczne od samego początku */
+.stage-merge{
+  flex:1 0 100%;display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+  border-top:1px dashed var(--stroke);padding-top:9px;margin-top:2px;
+  font-size:.78rem;color:var(--muted);line-height:1.45;
+}
+.stage-merge .k{
+  text-transform:uppercase;letter-spacing:.06em;font-size:.64rem;font-weight:600;
+  border:1px solid var(--stroke);border-radius:999px;padding:2px 9px;color:#cfd8f0;white-space:nowrap;
+}
+.stage-merge .v{color:#e9eefc}
+.stage-merge .v em{font-style:normal;color:var(--gold);font-weight:650}
+.canvas-wrap{position:relative;height:clamp(340px,54vh,620px);background:#0a1024;flex:none}
+#scene{display:block;position:absolute;inset:0;width:100%;height:100%}
+
+/* ---- okienko parametrów na wizualizacji (skrót do ustawień) ---- */
+.scene-params{
+  position:absolute;top:10px;right:10px;z-index:4;width:200px;
+  border:1px solid var(--stroke);border-radius:12px;background:rgba(8,13,28,.86);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  box-shadow:0 10px 26px rgba(0,0,0,.38);overflow:hidden;font-size:.72rem;
+}
+.scene-params.pending{border-color:rgba(246,196,99,.65);box-shadow:0 0 0 1px rgba(246,196,99,.25),0 10px 26px rgba(0,0,0,.38)}
+.sp-head{
+  display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;
+  padding:6px 8px 6px 10px;background:rgba(255,255,255,.05);
+  border-bottom:1px solid var(--stroke);font-weight:650;color:#c3cde9;letter-spacing:.02em;
+}
+.sp-head .sp-title{font-size:.7rem;letter-spacing:.01em;color:#dbe3fa;flex:1 1 auto;min-width:0;line-height:1.25}
+.sp-flag{flex:1 0 100%;font-size:.62rem;color:var(--gold);letter-spacing:.04em;white-space:nowrap;padding-top:1px}
+.sp-toggle{
+  border:1px solid var(--stroke);background:rgba(255,255,255,.05);color:var(--txt);
+  border-radius:8px;width:22px;height:20px;line-height:1;cursor:pointer;font-size:.72rem;padding:0;
+  margin-left:auto;                 /* przycisk zawsze przy prawej krawędzi nagłówka */
+}
+.sp-toggle:hover{border-color:var(--mint);color:var(--mint)}
+.sp-body{display:grid;gap:5px;padding:8px 9px 9px}
+.sp-body[hidden]{display:none}
+.sp-row{display:grid;grid-template-columns:1fr 62px;align-items:center;gap:6px}
+.sp-row label{color:var(--muted);font-size:.68rem;line-height:1.15}
+.sp-row input{
+  width:100%;padding:5px 6px;border-radius:8px;border:1px solid var(--stroke-2);
+  background:rgba(4,8,20,.6);color:var(--txt);font:inherit;font-size:.72rem;
+  font-variant-numeric:tabular-nums;text-align:right;
+}
+.sp-row input:focus{outline:none;border-color:var(--mint);box-shadow:0 0 0 2px var(--mint-soft)}
+.sp-row input.invalid{border-color:var(--danger);box-shadow:0 0 0 2px var(--danger-soft)}
+/* v14t: tryb „podglądania” — w trakcie przeciągania osi czasu okienko pokazuje parametry
+   FAKTYCZNIE obowiązujące, a pole „Dopłać” znika (nie da się dopłacać w trakcie przewijania). */
+.scene-params.scrub{border-color:rgba(95,227,192,.5)}
+.scene-params.scrub .sp-dep{display:none}
+.scene-params.scrub .sp-flag{display:none}
+.scene-params.scrub .sp-title::after{content:" · podgląd";color:var(--mint);font-weight:500}
+/* pole daty — bez szerokiego marginesu na jednostkę */
+.input-wrap input[type=date]{padding-right:13px}
+
+/* znaczniki stylu kropki: pełna (wkłady) vs obwódka (odsetki) */
+.tag{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:-1px;flex:none}
+.tag-solid{background:var(--mint);box-shadow:0 0 0 1px rgba(0,0,0,.4) inset}
+.tag-ring{background:transparent;border:1.8px solid var(--gold)}
+.num .tag{margin-right:6px}
+
+/* ---------------- statystyki ---------------- */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.stat{
+  border:1px solid var(--stroke);border-radius:12px;padding:10px 12px;background:rgba(255,255,255,.03);
+}
+.stat .lbl{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;display:block}
+.stat .val{font-size:1.02rem;font-weight:680;font-variant-numeric:tabular-nums;margin-top:3px;display:block}
+.stat.mint .val{color:var(--mint)}
+.stat.gold .val{color:var(--gold)}
+.goal{margin-top:12px;border:1px solid var(--stroke);border-radius:12px;padding:11px 12px;background:rgba(255,255,255,.03)}
+.goal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:.8rem;color:#c6d1ef;flex-wrap:wrap}
+.badge{font-size:.7rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:4px 9px;border-radius:999px;border:1px solid}
+.badge.ok{color:var(--mint);border-color:rgba(95,227,192,.5);background:var(--mint-soft)}
+.badge.no{color:var(--gold);border-color:rgba(246,196,99,.5);background:var(--gold-soft)}
+.bar{height:9px;border-radius:999px;background:rgba(255,255,255,.08);margin:9px 0 7px;overflow:hidden}
+.bar-fill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,var(--mint),var(--gold));transition:width .18s}
+.goal-text{margin:0;font-size:.78rem;color:var(--muted);line-height:1.5}
+.goal-text b{color:var(--txt)}
+.lesson{margin-top:12px;border:1px solid var(--stroke);border-radius:12px;padding:11px 12px;background:rgba(95,227,192,.05)}
+.lesson-title{margin:0 0 7px;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--mint);font-weight:600}
+.lesson ul{margin:0;padding-left:16px}
+.lesson li{margin:4px 0;font-size:.75rem;line-height:1.4;color:#c8d1ee}
+.lesson li b{color:var(--txt)}
+.lesson li .hi{color:var(--gold);font-weight:600}
+.chart-wrap{position:relative;margin-top:12px;border:1px solid var(--stroke);border-radius:12px;overflow:hidden;background:rgba(3,6,16,.45)}
+#chart{display:block;width:100%;height:180px}
+.chart-cap{position:static;margin:0;padding:6px 10px 8px;font-size:.66rem;color:var(--muted);letter-spacing:.03em;pointer-events:none;border-top:1px solid var(--stroke);line-height:1.45}
+.chart-cap .dim{color:rgba(255,255,255,.38);font-size:.62rem}
+
+/* ---------------- podpowiedzi (tooltip) ---------------- */
+.tip{
+  position:fixed;left:0;top:0;z-index:90;pointer-events:none;max-width:300px;
+  background:rgba(8,14,30,.97);border:1px solid rgba(95,227,192,.42);
+  border-radius:11px;padding:8px 11px;font-size:.74rem;line-height:1.45;color:var(--txt);
+  box-shadow:0 14px 34px rgba(0,0,0,.55);
+}
+.tip .t-head{display:block;color:var(--mint);font-weight:650;margin-bottom:2px}
+.tip b{color:#a8f5df;font-weight:650}
+
+/* ---------------- pasek sterowania ---------------- */
+.controls{
+  position:sticky;bottom:0;z-index:20;margin-top:2px;
+  background:linear-gradient(180deg,rgba(9,14,28,.82),rgba(9,14,28,.97));
+  border:1px solid rgba(95,227,192,.16);border-radius:var(--radius);padding:12px 16px;
+  backdrop-filter:blur(12px);box-shadow:0 -10px 30px rgba(0,0,0,.4);
+  display:flex;flex-direction:column;gap:10px;
+}
+.tl-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:nowrap}
+.tl-date{font-size:1.15rem;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.02em;flex:none}
+.tl-meta{font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums;
+  flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}
+.tl-meta b{color:var(--txt)}
+.tl-ends{display:flex;justify-content:space-between;font-size:.7rem;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:-4px}
+/* oś czasu wraz z podpowiedzią „puść, aby wyzerować” */
+.tl-track{position:relative}
+.tl-hint{
+  /* v14t: pozycja podpowiedzi liczona w JS (tuż nad kropką suwaka, zawsze w kadrze) */
+  position:absolute;left:0;transform:translateX(-50%);bottom:calc(100% + 4px);z-index:8;
+  background:rgba(9,14,32,.96);border:1px solid rgba(246,196,99,.75);color:var(--gold);
+  padding:6px 12px;border-radius:999px;font-size:.72rem;white-space:nowrap;pointer-events:none;
+  box-shadow:0 8px 20px rgba(0,0,0,.45);
+}
+.btns{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+/* v14u: przycisk „⏮ Wgraj ustawienia” stoi u dołu po prawej */
+.sep{width:1px;height:26px;background:var(--stroke);margin:0 3px}
+/* suwak prędkości */
+.speed-row{display:flex;align-items:center;gap:12px;margin-top:2px}
+.speed-row label{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}
+.speed-row input[type=range]{flex:1 1 auto;max-width:280px;min-width:120px}
+input[type=range].speed::-webkit-slider-runnable-track{background:linear-gradient(90deg,var(--gold),var(--violet))}
+input[type=range].speed::-moz-range-track{background:linear-gradient(90deg,var(--gold),var(--violet))}
+.speed-value{
+  font-size:.86rem;font-weight:700;color:var(--gold);min-width:38px;text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+.speed-readout{font-size:.72rem;color:var(--muted)}
+.controls-note{font-size:.7rem;color:var(--muted);margin:0}
+@media (max-width:640px){ .speed-readout{display:none} .tl-meta{font-size:.72rem} }
+
+/* ---------------- responsywność ---------------- */
+/* Pulpit (desktop, duży ekran): aplikacja mieści się w jednym ekranie,
+   kolumna z parametrami przewija się wewnętrznie, scena zajmuje resztę miejsca. */
+/* Laptop i szerszej: dwie kolumny — scena z ustawieniami (po lewej) + podsumowanie (po prawej) */
+@media (min-width:1021px){
+  .layout{grid-template-columns:minmax(0,1fr) minmax(300px,370px);grid-template-areas:"stage left"}
+  .col-left{overflow-y:auto;overflow-x:hidden;padding-right:6px}
+  .col-left::-webkit-scrollbar{width:8px}
+  .col-left::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:8px}
+}
+/* Wysoki pulpit: całość mieści się w jednym oknie (bez przewijania) */
+@media (min-width:1021px) and (min-height:720px){
+  .wrap{height:100vh;max-height:100vh;overflow:hidden;padding-bottom:12px}
+  .layout{flex:1 1 auto;min-height:0;grid-template-rows:minmax(0,1fr)}
+  .col{min-height:0}
+  .col-stage{height:100%;overflow:hidden}
+  .card-settings{flex:0 0 auto}
+  .stage{flex:1 1 auto;min-height:0;overflow-y:auto}
+  .stage .canvas-wrap{flex:1 1 auto;height:auto;min-height:240px}
+}
+/* Pulpit szeroki: trzy kolumny — parametry, scena, podsumowanie.
+   (display:contents „wyciąga” obie karty z kolumny, by znalazły się w osobnych kolumnach) */
+@media (min-width:1360px){
+  .layout{grid-template-columns:minmax(0,1fr) minmax(320px,390px)}
+  .card-summary{overflow-y:auto;overflow-x:hidden;min-height:0}
+  .card-summary::-webkit-scrollbar{width:8px}
+  .card-summary::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:8px}
+}
+/* v14w: na ekranach, gdzie strona się przewija (telefon/tablet), podsumowanie
+   ma stałą wysokość — inaczej zmiana długości tekstu pod celem i w lekcji
+   potrafiła przesunąć całą stronę po zwolnieniu suwaka. */
+@media (max-width:1020px){
+  .goal-text{min-height:9em}
+  .lesson ul{min-height:262px}
+  .stat-grid{grid-template-columns:repeat(4,1fr)}
+  /* --- układ jednokolumnowy: scena → sterowanie → parametry --- */
+  .layout{display:contents}          /* scena i karty stają się dziećmi .wrap (flex) */
+  .col-stage{order:1}
+  .controls{order:2;position:static} /* pasek pod sceną, a nie na wierzchu */
+  .col-left{order:3}
+  .canvas-wrap{height:clamp(300px,46vh,470px)}
+}
+@media (max-width:1360px){
+  .settings-note{display:none}
+  .num{min-width:88px;padding:6px 9px}
+  .num span{font-size:.64rem}
+  .num b{font-size:.94rem}
+  .stage-date .big{font-size:1.28rem}
+  .stage-head{padding:11px 14px}
+}
+/* Niewysokie laptopy (1024 px): jeszcze bardziej zwarty nagłówek sceny,
+   żeby kula i tor zmieściły się bez przewijania */
+@media (max-width:1100px) and (min-height:720px){
+  .stage-head{gap:8px;padding:9px 12px}
+  .stage-date .big{font-size:1.12rem}
+  .stage-date .small{font-size:.66rem}
+  .num{min-width:0;padding:5px 8px;border-radius:10px}
+  .num span{font-size:.58rem;letter-spacing:.02em}
+  .num b{font-size:.86rem}
+  .stage-nums{gap:6px}
+}
+@media (max-width:640px){
+  .wrap{padding:12px 12px 8px}
+  /* v15: zwarty nagłówek — wiek widoczny, ale nie zjada ekranu */
+  header.top{margin:-12px -12px 0;padding:9px 12px 8px;gap:9px}
+  .logo{width:36px;height:36px;border-radius:12px;font-size:17px}
+  .brand h1{font-size:.98rem}
+  .brand p{display:none}
+  .chip{font-size:.72rem;padding:5px 10px}
+  .chip-wide,.chip-start{display:none}   /* w przyklejonym nagłówku zostaje sam wiek */
+  .scene-params{width:156px;top:8px;right:8px}
+  .sp-row{grid-template-columns:1fr 54px}
+  .sp-row label{font-size:.62rem}
+  .sp-row input{font-size:.66rem;padding:4px 5px}
+  .settings-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px 9px}
+  .settings-grid .field>label{font-size:.68rem}
+  .settings-grid .input-wrap input{padding:6px 34px 6px 8px;font-size:.84rem}
+  .settings-grid .input-wrap .suffix{right:7px;font-size:.66rem}
+  .settings-grid .hint{display:none}
+  .settings-grid .field-age .birth{font-size:.66rem;padding:5px 4px}
+  /* data musi zmieścić się w wąskiej kolumnie telefonu */
+  .settings-grid .input-wrap input[type=date]{font-size:.62rem;padding:5px 2px}
+  .settings-note{display:none}
+  .settings-actions{width:100%;margin-left:0;order:3}
+  .settings-actions .btn{flex:1 1 0;text-align:center}
+  .stat-grid{grid-template-columns:1fr 1fr}
+  .brand p{display:none}
+  .chips{font-size:.72rem}
+  .chip{padding:5px 10px}
+  /* --- scena + pasek sterowania muszą zmieścić się w jednym oknie --- */
+  /* telefon: data nad kafelkami, kafelki w stałej siatce 2×2 (brak skakania) */
+  .stage-head{padding:9px 11px;gap:8px;flex-direction:column;align-items:stretch}
+  .stage-date{flex:1 1 auto;width:auto}
+  .stage-date .big{font-size:1.16rem}
+  .stage-date .small{font-size:.68rem}
+  .stage-nums{gap:6px;width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .num{min-width:0;padding:5px 7px;border-radius:9px}
+  .num span{font-size:.57rem;letter-spacing:.02em}
+  .num b{font-size:.8rem}
+  .controls{padding:9px 11px;gap:7px}
+  .controls-note{font-size:.64rem;line-height:1.32}
+  .tl-hint{font-size:.64rem;padding:5px 10px}
+  .btn{padding:8px 11px;font-size:.78rem}
+  .btns{gap:6px}
+  .speed-row{gap:8px}
+  .tl-date{font-size:1rem}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <div class="logo">❄</div>
+      <div>
+        <h1>Lawina oszczędności</h1>
+        <p id="brandSub">Procent składany w pigułce: po 20 latach masz 253 768 zł, choć wpłaciłeś tylko 120 000 zł.</p>
+      </div>
+    </div>
+    <div class="chips">
+      <div class="chip chip-start">Start: <b id="chipStart">—</b></div>
+      <div class="chip">Wiek: <b id="chipAge">18 lat</b></div>
+      <div class="chip chip-wide">Stopy procentowe: <b>kapitalizacja miesięczna</b></div>
+    </div>
+  </header>
+
+  <section class="card card-settings" id="settingsCard">
+    <div class="settings-head">
+      <h2 class="card-title">Ustawienia początkowe</h2>
+      <span class="settings-note" id="settingsNote">Wpłata na <b>koniec</b> miesiąca · stopa miesięczna = (1 + r)<sup>1/12</sup> − 1 · te ustawienia <b>od razu</b> definiują symulację od miesiąca 0. Okienko <b>Parametry bieżące</b> na scenie działa niezależnie: wpłata, stopa i jednorazowa <b>dopłata</b> — zatwierdzasz je <b>Enterem</b>, <b>spacją</b> albo przyciskiem ▶ Symulacja.</span>
+    </div>
+
+    <div class="settings-grid">
+      <div class="field">
+        <label for="contribution">Wpłata / miesiąc</label>
+        <div class="input-wrap">
+          <input id="contribution" type="number" min="0" step="10" value="500" inputmode="decimal"
+                 title="Miesięczna wpłata — dopisywana na koniec każdego miesiąca, po naliczeniu odsetek." />
+          <span class="suffix">zł</span>
+        </div>
+        <p class="error" id="errContribution" hidden></p>
+      </div>
+
+      <div class="field">
+        <label for="capital0">Kapitał startowy</label>
+        <div class="input-wrap">
+          <input id="capital0" type="number" min="0" step="100" value="0" inputmode="decimal"
+                 title="Pieniądze, które masz już na starcie (0 = zaczynamy od zera). W trakcie symulacji różnica dopłaca się do kuli." />
+          <span class="suffix">zł</span>
+        </div>
+        <p class="error" id="errCapital0" hidden></p>
+      </div>
+
+      <div class="field">
+        <label for="annualPct">Stopa roczna</label>
+        <div class="input-wrap">
+          <input id="annualPct" type="number" min="0" step="0.1" value="7" inputmode="decimal"
+                 title="Średnia roczna stopa zwrotu — bez górnego limitu (suwak obejmuje 0–30 %). Miesięcznie: (1 + r)¹ᐟ¹² − 1." />
+          <span class="suffix">%</span>
+        </div>
+        <input id="annualRange" class="rate" type="range" min="0" max="30" step="0.5" value="7" aria-label="Suwak: roczna stopa zwrotu (0–30 %)" title="Suwak: roczna stopa zwrotu (0–30 %). Wpisywanie ręczne w polu obok nie ma górnego limitu." />
+        <p class="error" id="errAnnual" hidden></p>
+      </div>
+
+      <div class="field">
+        <label for="target">Cel / miesiąc</label>
+        <div class="input-wrap">
+          <input id="target" type="number" min="0" step="50" value="1000" inputmode="decimal"
+                 title="Cel: ile kapitał ma wypłacać co miesiąc przy założonej stopie zwrotu." />
+          <span class="suffix">zł</span>
+        </div>
+        <p class="error" id="errTarget" hidden></p>
+      </div>
+
+      <div class="field">
+        <label for="startDateInput">Data startu</label>
+        <div class="input-wrap">
+          <input id="startDateInput" type="date" title="Data rozpoczęcia symulacji — domyślnie dzisiaj." />
+        </div>
+      </div>
+
+      <!-- v14u: data urodzenia — z niej liczymy wiek i „kamienie milowe” wieku -->
+      <div class="field field-age">
+        <label for="birthDate">Data urodzenia</label>
+        <input id="birthDate" class="birth" type="date"
+               title="Data urodzenia — z niej liczymy Twój wiek i „kamienie milowe” wieku na scenie." />
+        <p class="error" id="errAge" hidden></p>
+      </div>
+
+      <!-- v14u: horyzont inwestycyjny (ile lat trwa symulacja) -->
+      <div class="field field-horizon">
+        <label for="horizonYears">Horyzont czasowy inwestycji</label>
+        <div class="input-wrap">
+          <input id="horizonYears" type="number" min="1" max="100" step="1" value="50" inputmode="numeric"
+                 title="Horyzont inwestycyjny — ile lat trwa symulacja (domyślnie 50 lat)." />
+          <span class="suffix">lat</span>
+        </div>
+        <p class="error" id="errHorizon" hidden></p>
+      </div>
+    </div>
+
+    <div id="validation" class="validation" role="alert" aria-live="polite"></div>
+  </section>
+
+  <div class="layout">
+      <!-- ================= KOLUMNA PODSUMOWANIA ================= -->
+    <div class="col col-left">
+      <section class="card card-summary">
+        <h2 class="card-title">Podsumowanie</h2>
+        <div class="stat-grid">
+          <div class="stat"><span class="lbl">Wpłacone łącznie</span><span class="val" id="statContributed">—</span></div>
+          <div class="stat gold"><span class="lbl">Zysk z kapitału</span><span class="val" id="statReturns">—</span></div>
+          <div class="stat mint"><span class="lbl">Kapitał</span><span class="val" id="statCapital">—</span></div>
+          <div class="stat"><span class="lbl">Dochód / mies.</span><span class="val" id="statMonthly">—</span></div>
+        </div>
+
+        <div class="chart-wrap">
+          <canvas id="chart"></canvas>
+          <p class="chart-cap">Zielone = Twoje wkłady · złote = odsetki<br>
+            <span class="dim">linia przerywana = procent liczony tylko od wpłat (bez kapitalizacji) · ▲ = miesięczne odsetki przewyższają wpłatę · ◆ = skumulowane odsetki przewyższają wszystkie wpłaty</span></p>
+        </div>
+
+        <div class="goal">
+          <div class="goal-head">
+            <span>Cel: <b id="goalTarget">—</b> miesięcznie</span>
+            <span class="badge no" id="goalBadge">—</span>
+          </div>
+          <div class="bar"><div class="bar-fill" id="goalBar"></div></div>
+          <p class="goal-text" id="goalText">—</p>
+        </div>
+
+        <div class="lesson">
+          <p class="lesson-title">Co się dzieje z Twoimi pieniędzmi</p>
+          <ul id="lessonList"></ul>
+        </div>
+      </section>
+    </div>
+
+    <!-- ================= SCENA: USTAWIENIA POCZĄTKOWE + WIZUALIZACJA ================= -->
+    <div class="col col-stage">
+      <section class="card stage">
+        <div class="stage-head">
+          <div class="stage-date">
+            <span class="big" id="stageDate">—</span>
+            <span class="small" id="stageSub">—</span>
+          </div>
+          <div class="stage-nums">
+            <div class="num mint"><span>Kapitał</span><b id="hudCapital">—</b></div>
+            <div class="num"><span><i class="tag tag-solid"></i>Wkład / mies.</span><b id="hudFlowIn">—</b></div>
+            <div class="num gold"><span><i class="tag tag-ring"></i>Odsetki / mies.</span><b id="hudFlowOut">—</b></div>
+            <div class="num"><span>Miesiąc</span><b id="hudMonth">0</b></div>
+          </div>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="scene"></canvas>
+          <!-- „Parametry bieżące” NA wizualizacji: to, co działa TERAZ (wpłata
+               miesięczna i stopa) oraz jednorazowa DOPŁATA w tym miejscu osi czasu.
+               Zmiana tutaj NIE przebudowuje symulacji — czeka, aż zatwierdzi ją
+               Enter, spacja albo przycisk „▶ Symulacja”/„▶ Wznój” (od teraz). -->
+          <div class="scene-params" id="sceneParams">
+            <div class="sp-head">
+              <span class="sp-title">Parametry bieżące</span>
+              <button class="sp-toggle" id="spToggle" type="button" title="Zwiń / rozwiń okienko parametrów (rozwinięcie pauzuje symulację)">▸</button>
+              <span class="sp-flag" id="spFlag" hidden>● czeka</span>
+            </div>
+            <div class="sp-body" id="spBody" hidden>
+              <div class="sp-row"><label for="spContribution">Wpłata / mies.</label><input id="spContribution" type="number" min="0" step="10" inputmode="decimal" title="Miesięczna wpłata — zmiana zadziała od momentu zatwierdzenia (Enter, spacja albo ▶ Wznój)." /></div>
+              <div class="sp-row sp-dep"><label for="spDeposit">Dopłać</label><input id="spDeposit" type="number" min="0" step="100" inputmode="decimal" placeholder="0" title="Jednorazowa dopłata do kuli — trafia do kuli W TYM MIEJSCU osi czasu (zatwierdź Enterem, spacją albo przyciskiem ▶ Wznój). Od następnego miesiąca pracuje jak kapitał." /></div>
+              <div class="sp-row"><label for="spAnnual">Stopa roczna %</label><input id="spAnnual" type="number" min="0" step="0.1" inputmode="decimal" title="Roczna stopa zwrotu — bez górnego limitu. Zmiana zadziała od momentu zatwierdzenia (Enter, spacja albo ▶ Wznój)." /></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ================= STEROWANIE ================= -->
+  <footer class="controls">
+    <div>
+      <div class="tl-head">
+        <span class="tl-date" id="tlDate">—</span>
+        <span class="tl-meta">Miesiąc <b id="tlMonth">0</b> z <b id="tlHorizon">600</b> · <b id="tlYears">0,0</b> lat od startu</span>
+      </div>
+      <div class="tl-track">
+        <input id="timeline" type="range" min="0" max="600" step="1" value="0" aria-label="Oś czasu — kliknij lub przeciągnij, aby przeskoczyć do wybranego miesiąca. Przeciągnięcie na sam początek zeruje wizualizację do ustawień początkowych." />
+        <div class="tl-hint" id="tlHint" hidden>Puść aby wyzerować do ustawień początkowych</div>
+      </div>
+      <div class="tl-ends"><span id="tlStart">—</span><span id="tlEnd">—</span></div>
+      <div class="speed-row">
+        <label for="speed">Prędkość</label>
+        <input id="speed" type="range" min="1" max="20" step="1" value="3" title="1× = 1 miesiąc na 2,4 s · 20× = 8 miesięcy na sekundę" aria-label="Prędkość symulacji — od 1 do 20 razy" />
+        <span class="speed-value" id="speedValue">3×</span>
+        <span class="speed-readout" id="speedReadout">—</span>
+      </div>
+    </div>
+    <div class="btns">
+      <button id="rewindBtn" class="btn" type="button" title="Przytrzymaj, aby cofać czas; kliknij, aby przeskoczyć o 10 miesięcy">⏪ Cofaj</button>
+      <button id="playBtn" class="btn btn-primary" type="button" title="Rozpocznij symulację (spacja). Stosuje też zmiany ustawień oczekujące od teraz.">▶ Symulacja</button>
+      <button id="ffBtn" class="btn" type="button" title="Przytrzymaj, aby przewijać do przodu; kliknij, aby przeskoczyć o 10 miesięcy">⏩ Przyspiesz</button>
+      <button id="prevBtn" class="btn btn-icon" type="button" title="Miesiąc wstecz">−1</button>
+      <button id="nextBtn" class="btn btn-icon" type="button" title="Miesiąc dalej">+1</button>
+      <button id="stopBtn" class="btn btn-icon" type="button" title="Stop: powrót na początek symulacji i wyzerowanie do ustawień początkowych">⏹</button>
+    </div>
+  </footer>
+</div>
+
+<!-- v15: podpowiedzi (wykres, chorągiewki wieku, podziałka osi czasu) -->
+<div id="tip" class="tip" hidden></div>
+
+<script>
+/* =====================================================================================
+   LAWINA OSZCZĘDNOŚCI
+   -------------------------------------------------------------------------------------
+   Podział odpowiedzialności:
+     1) Simulation  – czysta logika finansowa (bez DOM, łatwo testowalna)
+     2) Fmt / Dates  – formatowanie kwot i dat (pl-PL)
+     3) Scene       – renderer canvas (zbocze, kula z kropek, heatmap w tle, efekty)
+     4) App         – kontroler (formularz, oś czasu, odtwarzanie, pętla rAF)
+   ===================================================================================== */
+(function () {
+  'use strict';
+
+  /* ===================================================================================
+     1) MODEL — logika finansowa (czysta funkcja, bez DOM)
+     =================================================================================== */
+  const Simulation = (() => {
+    const HORIZON = 600;              // domyślny horyzont: 600 miesięcy = 50 lat
+    const MAX_HORIZON = 1200;         // 100 lat — maksimum ustawienia „Horyzont”
+
+    /* --- nominały polskiej waluty (grosze pomijamy) --------------------------
+       Drabina nominałów: 1 → 2 → 5 → 10 → 20 → 50 → 100 → 200 → 500 zł.
+       Banknoty mają barwy zgodne z prawdziwymi banknotami PLN, monety — barwy metalu. */
+    const LADDER = [1, 2, 5, 10, 20, 50, 100, 200, 500];
+    // v14v: stopa może być wpisana ręcznie bez górnego limitu, więc zabezpieczamy
+    // model przed przepełnieniem (wynik zostaje „ogromny”, ale nie staje się NaN).
+    const MAX_BAL = 1e300;
+    const safeNum = function (v) { return isFinite(v) ? Math.min(v, MAX_BAL) : MAX_BAL; };
+    const DENOM_META = {
+      500: { color: '#8b5fd6', label: '500 zł', kind: 'banknot' },
+      200: { color: '#b4674a', label: '200 zł', kind: 'banknot' },
+      100: { color: '#4f7fd6', label: '100 zł', kind: 'banknot' },
+      50:  { color: '#3f9e6b', label: '50 zł',  kind: 'banknot' },
+      20:  { color: '#d9544f', label: '20 zł',  kind: 'banknot' },
+      10:  { color: '#e08a3c', label: '10 zł',  kind: 'banknot' },
+      5:   { color: '#c8d1de', label: '5 zł',   kind: 'moneta' },
+      2:   { color: '#c8873a', label: '2 zł',   kind: 'moneta' },
+      1:   { color: '#f0c04a', label: '1 zł',   kind: 'moneta' }
+    };
+    /* --- jedna paleta dla całej aplikacji --------------------------------------
+       MIĘTA  = Twoje wkłady  → rdzeń kuli (pełne kropki) + opis „wkład”
+       ZŁOTO  = odsetki        → warstwa kuli (obwódki)   + opis „odsetki”
+       W obrębie warstwy odcień rośnie wraz z nominałem (większa kropka = jaśniej). */
+    const LAYER_COLORS = {
+      core:  { dark: '#2e9c82', mid: '#5fe3c0', light: '#a9f7dd' },  // mięta  = wkłady
+      outer: { dark: '#c2851f', mid: '#f6c463', light: '#ffe4a6' }   // złoto  = odsetki
+    };
+
+    /** Miesza dwa kolory (#rrggbb): t = 0 → pierwszy, t = 1 → drugi. */
+    function mix(c1, c2, t) {
+      const a = parseInt(c1.slice(1), 16), b = parseInt(c2.slice(1), 16);
+      const r = Math.round(((a >> 16) & 255) * (1 - t) + ((b >> 16) & 255) * t);
+      const g = Math.round(((a >> 8) & 255) * (1 - t) + ((b >> 8) & 255) * t);
+      const bl = Math.round((a & 255) * (1 - t) + (b & 255) * t);
+      return 'rgb(' + r + ',' + g + ',' + bl + ')';
+    }
+
+    /** Odcień barwy warstwy dla nominału: 1 zł = ciemny, 500 zł = jasny. */
+    function layerTone(kind, v) {
+      const idx = Math.max(0, LADDER.indexOf(v));
+      const t = LADDER.length > 1 ? idx / (LADDER.length - 1) : 1;
+      const c = LAYER_COLORS[kind] || LAYER_COLORS.core;
+      return mix(c.dark, c.light, t);
+    }
+
+    /* Reguły łączenia kropek (drabina 1-2-5) — wartość jest zachowana:
+         2 × 1 zł                = 2 zł
+         2 × 2 zł + 1 × 1 zł     = 5 zł
+         2 × 5 zł                = 10 zł
+         2 × 10 zł               = 20 zł
+         2 × 20 zł + 1 × 10 zł   = 50 zł
+         2 × 50 zł               = 100 zł
+         2 × 100 zł              = 200 zł
+         2 × 200 zł + 1 × 100 zł = 500 zł   (500 zł to nominał najwyższy)  */
+    const CARRY_RULES = [
+      { from: 1,   to: 2,   extra: 0 },
+      { from: 2,   to: 5,   extra: 1 },
+      { from: 5,   to: 10,  extra: 0 },
+      { from: 10,  to: 20,  extra: 0 },
+      { from: 20,  to: 50,  extra: 10 },
+      { from: 50,  to: 100, extra: 0 },
+      { from: 100, to: 200, extra: 0 },
+      { from: 200, to: 500, extra: 100 }
+    ];
+
+    /** Roczna stopa (%) -> stopa miesięczna (kapitalizacja złożona): (1+r)^(1/12) - 1 */
+    function toMonthlyRate(annualPct) {
+      const annual = Number(annualPct) / 100;
+      if (!Number.isFinite(annual) || annual <= -1) return 0;
+      return Math.pow(1 + annual, 1 / 12) - 1;
+    }
+
+    /** Rozkład kwoty (w zł) na kroki nominałów — od największego nominału. */
+    function decompose(amount) {
+      const value = Math.max(0, Number(amount) || 0);
+      const whole = Math.floor(value + 1e-9);
+      const rest = value - whole; // ułamki zł (grosze) — wracają w kolejnym miesiącu
+      const counts = new Array(LADDER.length).fill(0);
+      let r = whole;
+      for (let i = LADDER.length - 1; i >= 0; i--) {
+        counts[i] = Math.floor(r / LADDER[i]);
+        r -= counts[i] * LADDER[i];
+      }
+      return { counts: counts, rest: rest };
+    }
+
+    /** Łączenie kropek wg reguł nominałowych; zwraca nowe liczniki i listę połączeń. */
+    function carry(counts) {
+      const c = counts.slice();
+      const merges = [];
+      for (let s = 0; s < CARRY_RULES.length; s++) {
+        const rule = CARRY_RULES[s];
+        const iFrom = LADDER.indexOf(rule.from);
+        const iTo = LADDER.indexOf(rule.to);
+        let n = 0;
+        if (rule.extra) {
+          // 2 × A + 1 × B = C
+          const iExtra = LADDER.indexOf(rule.extra);
+          n = Math.min(Math.floor(c[iFrom] / 2), c[iExtra]);
+        } else {
+          n = Math.floor(c[iFrom] / 2);
+          // Jeśli następna reguła potrzebuje „jednej sztuki” tego nominału,
+          // zostawiamy ją w puli (zamiast spalić w parach).
+          const next = CARRY_RULES[s + 1];
+          if (next && next.extra === rule.from && c[iFrom] >= 1) {
+            const iNext = LADDER.indexOf(next.from);
+            const reserved = Math.floor((c[iFrom] - 1) / 2);
+            if (Math.floor((c[iNext] + reserved) / 2) >= 1) n = reserved;
+          }
+        }
+        if (n > 0) {
+          c[iFrom] -= 2 * n;
+          if (rule.extra) c[LADDER.indexOf(rule.extra)] -= n;
+          c[iTo] += n;
+          merges.push({ from: rule.from, to: rule.to, extra: rule.extra, count: n });
+        }
+      }
+      return { counts: c, merges: merges };
+    }
+
+    /** Wartość (w zł) zestawu kropek. */
+    function valueOf(counts) {
+      let s = 0;
+      for (let i = 0; i < LADDER.length; i++) s += counts[i] * LADDER[i];
+      return s;
+    }
+
+    /** Czytelny opis połączenia, np. „1 zł + 1 zł = 2 zł”. */
+    function mergeLabel(m) {
+      const parts = [m.from + ' zł', m.from + ' zł'];
+      if (m.extra) parts.push(m.extra + ' zł');
+      return parts.join(' + ') + ' = ' + m.to + ' zł';
+    }
+
+    /** Dodaje dwie tablice liczników (element po elemencie). */
+    function addCounts(a, b) {
+      const out = new Array(a.length);
+      for (let i = 0; i < a.length; i++) out[i] = a[i] + b[i];
+      return out;
+    }
+
+    /** Suma liczników (ile kropek łącznie). */
+    function totalDots(counts) {
+      let s = 0;
+      for (let i = 0; i < counts.length; i++) s += counts[i];
+      return s;
+    }
+
+    /**
+     * Salda kapitału po każdym miesiącu symulacji + stan pul kropek.
+     * Wzór (zgodny ze specyfikacją): balance = balance * (1 + monthlyRate) + contribution
+     * Wpłata jest dodawana NA KOŃCU miesiącu (po naliczeniu odsetek).
+     * capital0 — pieniądze, które mamy na starcie (nie są „wpłatą”, są zasianem).
+     *
+     * Kropki:
+     *  - RDZEŃ = wkłady (kapitał początkowy + wpłaty) — pieniądze, które dokładamy,
+     *  - WARSTWA ZEWNĘTRZNA = odsetki — pieniądze, które kapitał sam wygenerował.
+     * Nowe kropki trafiają do odpowiedniej puli, a potem są łączone wg drabiny
+     * nominałów (2×1 zł = 2 zł, 2×2 zł + 1×1 zł = 5 zł, … aż do 500 zł).
+     */
+    function buildSeries({ contribution, annualPct, capital0 }, horizon) {
+      const contrib = Math.max(0, Number(contribution) || 0);
+      const start = Math.max(0, Number(capital0) || 0);
+      const r = toMonthlyRate(annualPct);
+      const N = LADDER.length;
+      const HZ = Math.max(12, Math.min(MAX_HORIZON, Math.round(horizon || HORIZON)));
+      const series = new Array(HZ + 1);
+      let balance = start;
+      let contributed = 0;
+
+      let corePool = new Array(N).fill(0);   // rdzeń = wkłady
+      let outerPool = new Array(N).fill(0);  // warstwa zewnętrzna = odsetki
+      let coreRest = 0, outerRest = 0;       // ułamkowe grosze przenosimy na kolejny miesiąc
+      let simpleReturns = 0;                 // odsetki gdyby NIE były kapitalizowane (procent tylko od wpłat)
+
+      for (let m = 0; m <= HZ; m++) {
+        let coreAdd = new Array(N).fill(0);
+        let outerAdd = new Array(N).fill(0);
+        let coreMerges = [], outerMerges = [];
+
+        let interest = 0;   // odsetki narosłe w danym miesiącu (0 w miesiącu 0)
+        if (m === 0) {
+          // kapitał początkowy ląduje w rdzeniu (to też Twoje pieniądze)
+          if (start > 0) {
+            const c = decompose(start + coreRest); coreRest = c.rest;
+            coreAdd = c.counts;
+            const res = carry(coreAdd);
+            corePool = res.counts; coreMerges = res.merges;
+          }
+        } else {
+          interest = safeNum(balance * r);           // odsetki narosłe w tym miesiącu
+          // to samo, ale liczone TYLKO od wpłat (bez kapitalizacji) — na tej różnicy buduje się procent składany
+          simpleReturns = safeNum(simpleReturns + (start + contributed) * r);
+          balance = safeNum(balance * (1 + r) + contrib);   // kapitalizacja + wpłata
+          contributed += contrib;
+
+          // wkłady → rdzeń
+          const c = decompose(contrib + coreRest); coreRest = c.rest;
+          coreAdd = c.counts;
+          const cr = carry(addCounts(corePool, coreAdd));
+          corePool = cr.counts; coreMerges = cr.merges;
+
+          // odsetki → warstwa zewnętrzna
+          const o = decompose(interest + outerRest); outerRest = o.rest;
+          outerAdd = o.counts;
+          const or = carry(addCounts(outerPool, outerAdd));
+          outerPool = or.counts; outerMerges = or.merges;
+        }
+
+        const invested = start + contributed; // łącznie wpłacone (z kapitałem początkowym)
+        series[m] = {
+          month: m,
+          balance: balance,
+          contributed: contributed,
+          invested: invested,
+          returns: balance - invested,
+          monthlyReturn: balance * r,          // miesięczny dochód z kapitału
+          core: corePool.slice(),               // kropki rdzenia (wkłady)
+          outer: outerPool.slice(),             // kropki warstwy zewnętrznej (odsetki)
+          coreAdd: coreAdd,                     // kropki dodane w tym miesiącu
+          outerAdd: outerAdd,
+          coreMerges: coreMerges,               // połączenia w rdzeniu
+          outerMerges: outerMerges,             // połączenia w warstwie
+          interest: interest,                        // odsetki zapisane w tym miesiącu
+          simpleReturns: simpleReturns,             // odsetki „gdyby nie kapitalizować”
+          compoundBonus: (balance - invested) - simpleReturns, // odsetki od odsetek
+          coreValue: valueOf(corePool),
+          outerValue: valueOf(outerPool),
+          coreDots: totalDots(corePool),
+          outerDots: totalDots(outerPool),
+          coreRest: coreRest,                 // niewykorzystane grosze (do dalszego składania)
+          outerRest: outerRest
+        };
+      }
+      return { series: series, monthlyRate: r, initialCapital: start };
+    }
+
+    /**
+     * Kontynuacja symulacji od zadanego miesiąca z nowymi parametrami.
+     *
+     * To jest serce mechaniki „zmiana w trakcie symulacji”: miesiące przed
+     * `fromMonth` zostają nietknięte (historia kuli się nie zmienia), a od
+     * `fromMonth` obowiązują nowe parametry. Dzięki temu zmiana nie przebudowuje
+     * całej 50-letniej serii — przeliczamy tylko przyszłość.
+     *
+     * p.deposit — jednorazowa wpłata na starcie fazy: trafia do rdzenia kuli
+     * (czyli do „wkładów”) na KONIEC tego miesiąca, więc pracuje od następnego
+     * miesiąca. W buildSeries odpowiada jej kapitał początkowy.
+     */
+    function continueSeries(series, fromMonth, p, horizon) {
+      const contrib = Math.max(0, Number(p.contribution) || 0);
+      const r = toMonthlyRate(p.annualPct);
+      const deposit = Math.max(0, Number(p.deposit) || 0);
+      const N = LADDER.length;
+      const HZ = Math.max(12, Math.min(MAX_HORIZON, Math.round(horizon || HORIZON)));
+      const startM = Math.max(1, Math.min(HZ, Math.round(fromMonth)));
+      // historia bez zmian
+      const out = series.slice(0, startM);
+      const prev = out[out.length - 1];
+      let balance = prev.balance;
+      let contributed = prev.contributed;
+      let capitalTotal = prev.invested - prev.contributed;  // kapitał zsumowany (start + dopłaty)
+      let corePool = prev.core.slice();
+      let outerPool = prev.outer.slice();
+      let coreRest = prev.coreRest || 0;
+      let outerRest = prev.outerRest || 0;
+      let simpleReturns = prev.simpleReturns;
+
+      for (let m = startM; m <= HZ; m++) {
+        let coreAdd = new Array(N).fill(0);
+        let outerAdd = new Array(N).fill(0);
+        let coreMerges = [], outerMerges = [];
+        const interest = safeNum(balance * r);              // odsetki narosłe w tym miesiącu
+        simpleReturns = safeNum(simpleReturns + (capitalTotal + contributed) * r);  // to samo, ale tylko od wkładów
+        balance = safeNum(balance * (1 + r) + contrib);     // kapitalizacja + wpłata
+        contributed += contrib;
+
+        // jednorazowa dopłata na starcie fazy → do rdzenia (to Twoje pieniądze).
+        // Wpada na koniec tego miesiąca, więc odsetki naliczy się od niej
+        // dopiero w miesiącu następnym — tak jak przy zwykłej wpłacie.
+        const depositThis = (m === startM) ? deposit : 0;
+        if (depositThis > 0) { balance += depositThis; capitalTotal += depositThis; }
+
+        // wkłady (dopłata + wpłata) → rdzeń
+        const c = decompose(depositThis + contrib + coreRest); coreRest = c.rest;
+        coreAdd = c.counts;
+        const cr = carry(addCounts(corePool, coreAdd));
+        corePool = cr.counts; coreMerges = cr.merges;
+
+        // odsetki → warstwa zewnętrzna
+        const o = decompose(interest + outerRest); outerRest = o.rest;
+        outerAdd = o.counts;
+        const or = carry(addCounts(outerPool, outerAdd));
+        outerPool = or.counts; outerMerges = or.merges;
+
+        const invested = capitalTotal + contributed;
+        out.push({
+          month: m,
+          balance: balance,
+          contributed: contributed,
+          invested: invested,
+          returns: balance - invested,
+          monthlyReturn: balance * r,
+          core: corePool.slice(),
+          outer: outerPool.slice(),
+          coreAdd: coreAdd,
+          outerAdd: outerAdd,
+          coreMerges: coreMerges,
+          outerMerges: outerMerges,
+          interest: interest,
+          simpleReturns: simpleReturns,
+          compoundBonus: (balance - invested) - simpleReturns,
+          coreValue: valueOf(corePool),
+          outerValue: valueOf(outerPool),
+          coreDots: totalDots(corePool),
+          outerDots: totalDots(outerPool),
+          coreRest: coreRest,
+          outerRest: outerRest
+        });
+      }
+      return { series: out, monthlyRate: r, initialCapital: (prev ? prev.invested - prev.contributed : 0) + deposit };
+    }
+
+    /** Pierwszy miesiąc, w którym miesięczny dochód osiąga cel (albo null = brak w horyzoncie). */
+    function findTargetMonth(series, target) {
+      const t = Number(target) || 0;
+      if (t <= 0) return 0;
+      for (let m = 1; m < series.length; m++) {
+        if (series[m].monthlyReturn >= t) return m;
+      }
+      return null;
+    }
+
+    return {
+      HORIZON: HORIZON,
+      MAX_HORIZON: MAX_HORIZON,
+      LADDER: LADDER,
+      DENOM_META: DENOM_META,
+      LAYER_COLORS: LAYER_COLORS,
+      layerTone: layerTone,
+      CARRY_RULES: CARRY_RULES,
+      toMonthlyRate: toMonthlyRate,
+      decompose: decompose,
+      carry: carry,
+      valueOf: valueOf,
+      mergeLabel: mergeLabel,
+      totalDots: totalDots,
+      buildSeries: buildSeries,
+      continueSeries: continueSeries,
+      findTargetMonth: findTargetMonth,
+    };
+  })();
+
+  /* ===================================================================================
+     2) FORMATOWANIE — kwoty (PLN) i daty (pl-PL)
+     =================================================================================== */
+  const nfInt = new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 0 });
+  const nfPln0 = new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN', maximumFractionDigits: 0 });
+  const nfPln2 = new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const dfLong = new Intl.DateTimeFormat('pl-PL', { month: 'long', year: 'numeric' });
+
+  const Fmt = {
+    pln: function (v) { return nfPln0.format(Math.round(v || 0)); },
+    /** Kwota w skrócie — do podpisów osi wykresu: 1 500 000 → „1,5 mln”. */
+    compact: function (v) {
+      const a = Math.abs(v || 0);
+      const one = function (x, unit) {
+        let s = x.toFixed(1).replace('.', ',');
+        if (s.slice(-2) === ',0') s = s.slice(0, -2);
+        return s + ' ' + unit;
+      };
+      if (a >= 1e9) return one(v / 1e9, 'mld');
+      if (a >= 1e6) return one(v / 1e6, 'mln');
+      if (a >= 1e3) return Math.round(v / 1e3).toLocaleString('pl-PL') + ' tys.';
+      return Math.round(v || 0).toLocaleString('pl-PL');
+    },
+    pln2: function (v) { return nfPln2.format(v || 0); },
+    int: function (v) { return nfInt.format(Math.round(v || 0)); },
+    one: function (v) { return (v || 0).toLocaleString('pl-PL'); },
+    /** Polska forma liczebnika: 1 rok, 2 lata, 5 lat, 2,5 lat. */
+    yearsWord: function (n) {
+      const v = Math.round((n || 0) * 10) / 10;
+      if (v === 1) return '1 rok';
+      if (Number.isInteger(v)) return v + (v >= 2 && v <= 4 ? ' lata' : ' lat');
+      return v.toLocaleString('pl-PL', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' lat';
+    }
+  };
+
+  const TODAY = new Date();            // domyślna data startu = dziś
+  let START_DATE = new Date(TODAY);    // edytowalna data startu symulacji
+
+  const Dates = {
+    /** Ustawia datę startu symulacji (miesiąc 0). */
+    setStart: function (d) { START_DATE = new Date(d.getTime()); },
+    /** Aktualna data startu symulacji. */
+    getStart: function () { return new Date(START_DATE.getTime()); },
+    /** Data odpowiadająca n-tyemu miesiącowi symulacji (n=0 → data startu). */
+    month: function (n) {
+      const base = new Date(START_DATE.getFullYear(), START_DATE.getMonth() + n, 1);
+      const daysInMonth = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate();
+      const day = Math.min(START_DATE.getDate(), daysInMonth); // dzień startu, przycięty do długości miesiąca
+      return new Date(base.getFullYear(), base.getMonth(), day);
+    },
+    mmYyyy: function (n) {
+      const d = Dates.month(n);
+      return String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+    },
+    ddMmYyyy: function (n) {
+      const d = Dates.month(n);
+      return String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + d.getFullYear();
+    },
+    long: function (n) { return dfLong.format(Dates.month(n)); },
+    years: function (n) { return (n / 12).toLocaleString('pl-PL', { minimumFractionDigits: 1, maximumFractionDigits: 1 }); }
+  };
+
+  /* ===================================================================================
+     3) SCENA — renderer canvas (model v3)
+     Kula zbudowana jest z KROPEK: kolor kropki = nominał (banknot/moneta),
+     rdzeń (wewnętrzny dysk) = wkłady, warstwa zewnętrzna = odsetki.
+     W tle (niebo) rysowany jest zimowy krajobraz; z przodu kula z dwiema warstwami
+     (wkłady = mięta, odsetki = złoto) oraz okienko informacji stojące obok kuli.
+     =================================================================================== */
+  const Scene = (() => {
+    const TAU = Math.PI * 2;
+    const MAX_DOTS = 520;                // limit narysowanych kropek (rdzeń + warstwa)
+    const GOLDEN = Math.PI * (3 - Math.sqrt(5)); // złoty kąt — równomierne rozłożenie
+
+    const cv = document.getElementById('scene');
+    const ctx = cv.getContext('2d');
+
+    /* Obserwator rozmiaru: układ sceny potrafi się zmienić w trakcie pracy
+       (np. dłuższy tekst w kafelkach HUD), więc canvas musi się dopasować. */
+    let resizeRaf = 0;
+    const ro = new ResizeObserver(function () {
+      cancelAnimationFrame(resizeRaf);
+      resizeRaf = requestAnimationFrame(function () { api.resize(); });
+    });
+    ro.observe(cv.parentElement);
+
+    let W = 0, H = 0, dpr = 1, unit = 1;
+    let hill = null;
+    let FONT = 'system-ui, sans-serif';  // cache — getComputedStyle w pętli renderującej jest kosztowne
+    let bgLayer = null, fgLayer = null, vigLayer = null;
+
+    const st = {
+      ball: { x: 0, y: 0, r: 6 },
+      progress: 0,        // wygładzona pozycja na zboczu 0..1
+      targetProgress: 0,
+      lastProgress: 0,
+      pathLen: 900,       // przybliżona długość toru w px (do wyliczania obrotu)
+      rMax: 120,          // maksymalny promień kuli (dobrany do rozmiaru kadru)
+      coreFrac: 0.62,     // udział promienia rdzenia (dysku) w promieniu kuli
+      roll: 0,            // kąt obrotu kuli (rad)
+      month: 0,
+      coreDots: [],       // kropki rdzenia (znormalizowane do promienia kuli = 1)
+      outerDots: [],      // kropki warstwy zewnętrznej
+      coreValue: 0, outerValue: 0, coreCount: 0, outerCount: 0,
+      milestones: [],       // znaczniki dekad: {years, month, t, capital}
+      panelRect: null,      // miejsce zajmowane przez panel parametrów (scena, prawy górny róg)
+      msBadges: [],         // pozycje tabliczek dekad (okienko informacji ich unika)
+      cardX: null, cardY: null,  // pozycja okienka informacji (animowana)
+      cardRect: null,            // prostokąt okienka informacji (px sceny)
+      cardMonth: -1, cardPulse: 0, // puls okienka po zmianie miesiąca
+      effects: [],        // animacje (lotne kropki, etykiety połączeń)
+      capital: 0,
+      contribution: 500,
+      flowIn: 0,            // miesięczny wkład (zł)
+      flowOut: 0,           // miesięczne odsetki (zł)
+      time: 0
+    };
+
+    /** Tworzy bufor off-screen o rozmiarze kadru (z uwzględnieniem DPR). */
+    function makeLayer() {
+      const c = document.createElement('canvas');
+      c.width = Math.round(W * dpr);
+      c.height = Math.round(H * dpr);
+      const g = c.getContext('2d');
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      return { canvas: c, ctx: g };
+    }
+
+    /* --- pomocnicze: deterministyczny hash (ten sam element = ta sama pozycja) --- */
+    function hash(a, b) {
+      let h = (a | 0) * 374761393 + (b | 0) * 668265263;
+      h = (h ^ (h >>> 13)) * 1274126177;
+      return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+    }
+
+    /* --- geometria zbocza (krzywa Béziera III stopnia) --- */
+    function buildHill() {
+      // Maksymalny promień kuli wyznaczony jest tak, aby kula zawsze mieściła się w kadrze.
+      const rMax = Math.min(160 * unit, H * 0.25, W * 0.12);
+      st.rMax = rMax;
+
+      const P0 = { x: 0.08 * W, y: Math.max(0.18 * H, rMax * 1.95) };                    // start toru
+      const C1 = { x: 0.24 * W, y: P0.y + 0.12 * H };                                    // punkt kontrolny 1
+      const C2 = { x: 0.48 * W, y: 0.58 * H };                                           // punkt kontrolny 2
+      // v14u: u dołu zostawiamy miejsce na podziałkę czasu i kamienie milowe wieku
+      const rulerH = Math.min(42 * unit, H * 0.13);
+      st.rulerH = rulerH;
+      const P1 = { x: W - Math.max(0.09 * W, rMax * 1.55), y: H - Math.max(0.05 * H, rMax * 0.35) - rulerH }; // koniec toru
+
+      function pt(t) {
+        const u = 1 - t, u2 = u * u, t2 = t * t;
+        return {
+          x: u2 * u * P0.x + 3 * u2 * t * C1.x + 3 * u * t2 * C2.x + t2 * t * P1.x,
+          y: u2 * u * P0.y + 3 * u2 * t * C1.y + 3 * u * t2 * C2.y + t2 * t * P1.y
+        };
+      }
+      function tan(t) {
+        const u = 1 - t;
+        const dx = 3 * u * u * (C1.x - P0.x) + 6 * u * t * (C2.x - C1.x) + 3 * t * t * (P1.x - C2.x);
+        const dy = 3 * u * u * (C1.y - P0.y) + 6 * u * t * (C2.y - C1.y) + 3 * t * t * (P1.y - C2.y);
+        const l = Math.hypot(dx, dy) || 1;
+        return { x: dx / l, y: dy / l };
+      }
+      // przybliżona długość toru — potrzebna do wyliczania obrotu kuli
+      let len = 0;
+      let prev = pt(0);
+      for (let i = 1; i <= 100; i++) {
+        const cur = pt(i / 100);
+        len += Math.hypot(cur.x - prev.x, cur.y - prev.y);
+        prev = cur;
+      }
+      return { p0: P0, p1: P1, pt: pt, tan: tan, length: len };
+    }
+
+    /* --- pozycja i kierunek na torze --- */
+    function pathAt(t) {
+      const p = hill.pt(t);
+      const tg = hill.tan(t);
+      return { x: p.x, y: p.y, dx: tg.x, dy: tg.y, nx: tg.y, ny: -tg.x };
+    }
+
+    /* --- rozmiar kuli: POWOLNY wzrost logarytmiczny ------------------------
+       Przy 0 zł kula jest maleńką kropką, a dopiero po dekadach osiąga
+       maksymalny promień (dzięki temu nie „rozpada się” od razu).            */
+    function radiusFor(capital) {
+      const v = Math.max(0, capital || 0);
+      const rMin = 4.5 * unit;
+      const rMax = st.rMax || rMin;
+      const span = Math.log10(1 + 2.6e6 / 1000);            // skala: 0 zł … 2,6 mln zł
+      const t = Math.pow(Math.max(0, Math.log10(1 + v / 1000)) / span, 1.7);
+      return rMin + (rMax - rMin) * Math.min(1, t);
+    }
+
+    /* --- wielkość kropki zależy od nominału (skala logarytmiczna) --- */
+    function sizeMul(v) {
+      return Math.pow(v / 500, 0.30);   // 500 zł → 1.0, 1 zł → ~0.32
+    }
+
+    /**
+     * Wybiera kropki do narysowania w obrębie budżetu.
+     * Gdy kropek jest bardzo dużo, rysujemy próbkę z zachowaniem proporcji
+     * nominałów (każda narysowana kropka reprezentuje kilka prawdziwych).
+     */
+    function pickDots(counts, budget) {
+      const groups = [];
+      let total = 0;
+      for (let i = 0; i < counts.length; i++) {
+        if (counts[i] > 0) { groups.push({ v: Simulation.LADDER[i], n: counts[i] }); total += counts[i]; }
+      }
+      if (!groups.length) return [];
+      if (total <= budget) return groups.map(function (g) { return { v: g.v, n: g.n }; });
+
+      const picked = groups.map(function (g) {
+        return { v: g.v, n: Math.max(1, Math.round(budget * g.n / total)) };
+      });
+      let sum = 0;
+      picked.forEach(function (g) { sum += g.n; });
+      // nadmiar ścinamy z największych grup (każdy nominał zostaje widoczny)
+      while (sum > budget) {
+        let bi = 0;
+        for (let i = 1; i < picked.length; i++) if (picked[i].n > picked[bi].n) bi = i;
+        if (picked[bi].n <= 1) break;
+        picked[bi].n--; sum--;
+      }
+      return picked;
+    }
+
+    /**
+     * Układa kropki w dwóch strefach kuli:
+     *  - dysk (rdzeń)      → kropki wkładów,
+     *  - pierścień (warstwa) → kropki odsetek.
+     * Współrzędne są znormalizowane: 1 = promień kuli.
+     */
+    function buildDots(coreCounts, outerCounts) {
+      const coreValue = Simulation.valueOf(coreCounts);
+      const outerValue = Simulation.valueOf(outerCounts);
+      st.coreValue = coreValue; st.outerValue = outerValue;
+      st.coreCount = Simulation.totalDots(coreCounts);
+      st.outerCount = Simulation.totalDots(outerCounts);
+
+      const total = coreValue + outerValue;
+      // podział kuli: dysk (wkłady) vs pierścień (odsetki) — wg udziału wartości
+      const frac = total > 0 ? coreValue / total : 0.6;
+      // Pole dysku (rdzenia) jest PROPORCJONALNE do udziału wkładów, a pole pierścienia
+      // do udziału odsetek — dzięki temu warstwy kuli odpowiadają procentom z liczb.
+      const coreFrac = Math.max(0.04, Math.min(1, Math.sqrt(frac)));
+      st.coreFrac = coreFrac;
+
+      // budżet kropek dzielimy proporcjonalnie do pól obu stref
+      const areaCore = coreFrac * coreFrac;
+      const budgetCore = Math.max(8, Math.round(MAX_DOTS * areaCore));
+      const budgetOuter = Math.max(8, MAX_DOTS - budgetCore);
+
+      // rdzeń = pełne kropki (wkłady), warstwa = puste obwódki (odsetki) — od razu widać, co jest czym
+      st.coreDots = layoutRegion(pickDots(coreCounts, budgetCore), coreFrac, 0, false, 'core');
+      st.outerDots = layoutRegion(pickDots(outerCounts, budgetOuter), 1, coreFrac, true, 'outer');
+    }
+
+    /**
+     * Rozrzuca kropki w obrębie regionu (dysk lub pierścień) spiralą
+     * o złotym kącie. Większe nominały lądują bliżej środka.
+     */
+    function layoutRegion(groups, rOut, rIn, hollow, kind) {
+      const N = groups.reduce(function (a, g) { return a + g.n; }, 0);
+      if (!N) return [];
+      let wsum = 0;
+      groups.forEach(function (g) { wsum += sizeMul(g.v) * g.n; });
+      const avg = wsum / N;
+      const rEff = rIn > 0 ? Math.sqrt(Math.max(1e-6, rOut * rOut - rIn * rIn)) : rOut;
+      const width = rOut - rIn;
+      let capRad = 0.92 * rEff / Math.sqrt(N);          // kropki nie zachodzą na siebie
+      if (rIn > 0) capRad = Math.min(capRad, 0.45 * width); // w pierścieniu kropka mieści się w grubości warstwy
+
+      const dots = [];
+      let idx = 0;
+      const order = groups.slice().sort(function (a, b) { return b.v - a.v; });
+      for (const g of order) {
+        const rad = Math.max(0.02, capRad * (sizeMul(g.v) / avg));
+        for (let k = 0; k < g.n; k++) {
+          let x, y;
+          if (rIn > 0) {
+            // pierścień: równomiernie po promieniu
+            const t = (idx + 0.5) / N;
+            const lo = rIn + rad, hi = rOut - rad;
+            const rr = hi > lo ? lo + (hi - lo) * t : rIn + width * 0.5;
+            const a = idx * GOLDEN;
+            x = rr * Math.cos(a); y = rr * Math.sin(a);
+          } else {
+            // dysk: spiralą o złotym kącie (równomierne zagęszczenie)
+            const t = (idx + 0.5) / N;
+            const rr = rOut * Math.sqrt(t);
+            const a = idx * GOLDEN;
+            x = rr * Math.cos(a); y = rr * Math.sin(a);
+          }
+          // kolor kropki = kolor warstwy (mięta = wkłady, złoto = odsetki),
+          // odcień zależy od nominału
+          dots.push({ v: g.v, x: x, y: y, r: rad, hollow: !!hollow,
+                      color: Simulation.layerTone(kind, g.v) });
+          idx++;
+        }
+      }
+      return dots;
+    }
+
+    /* --- publiczny API sceny --- */
+    const api = {
+      resize: function () {
+        const box = cv.parentElement.getBoundingClientRect();
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        W = Math.max(300, box.width);
+        H = Math.max(240, box.height);
+        cv.width = Math.round(W * dpr);
+        cv.height = Math.round(H * dpr);
+        cv.style.width = W + 'px';
+        cv.style.height = H + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        unit = Math.max(0.5, Math.min(1.25, Math.min(W, H) / 560));
+        FONT = getComputedStyle(document.body).fontFamily || FONT;
+        hill = buildHill();
+        st.pathLen = hill.length;
+        buildLayers();   // statyczne warstwy rysujemy raz — główna pętla renderująca jest wtedy tania
+        api.applyState(st.lastState || defaultState());
+      },
+
+      /** Aktualizuje parametry wizualne (kapitał, pozycja, miesiąc, pule kropek). */
+      applyState: function (s) {
+        st.lastState = s;
+        st.capital = s.capital;
+        st.contribution = s.contribution;
+        st.flowIn = s.flowIn != null ? s.flowIn : s.contribution;
+        st.flowOut = s.flowOut || 0;
+        st.targetProgress = s.progress;
+        st.month = s.month;
+        st.milestones = s.milestones || [];
+        st.horizon = s.horizon || 600;
+        st.rulerStep = s.rulerStep || 10;
+        buildDots(s.core, s.outer);
+      },
+
+      /**
+       * Animacja „przyklejania” kropek: lotne kropki w kolorze nominału
+       * lecące na kulę + etykieta połączenia (np. „1 zł + 1 zł = 2 zł”).
+       */
+      spawnCollect: function (spec) {
+        // limit animacji — przy przewijaniu o 10 miesięcy naraz nie zalewamy kadru
+        if (st.effects.length > 24) return;
+        const ball = st.ball;
+        /**
+         * Lotna kropka. Na niej wypisana jest wartość nominału, a obok etykieta
+         * „wkład +500 zł” albo „odsetki +38 zł” — od razu wiadomo, co wpada do kuli.
+         */
+        const add = (counts, limit, kind) => {
+          let first = true;
+          for (let i = 0; i < counts.length && limit > 0; i++) {
+            const n = counts[i];
+            if (!n) continue;
+            const v = Simulation.LADDER[i];
+            const take = Math.min(n, limit);
+            limit -= take;
+            for (let k = 0; k < take; k++) {
+              // kropki spadają z góry kadru na kulę — widać, co „przykleja się”
+              const sx = Math.max(10, Math.min(W - 10, ball.x + (Math.random() - 0.5) * W * 0.55));
+              st.effects.push({
+                kind: 'dot',
+                x0: sx, y0: -24 - Math.random() * 40, x1: ball.x, y1: ball.y,
+                t: 0, dur: 0.55 + Math.random() * 0.25,
+                arc: 20 + Math.random() * 40,
+                a0: Math.random() * TAU, a1: Math.random() * TAU + 4 + Math.random() * 4,
+                size: (5 + 12 * Math.pow(v / 500, 0.3)) * Math.max(0.8, unit),
+                color: Simulation.LAYER_COLORS[kind].mid,   // mięta = wkład, złoto = odsetki
+                value: v
+              });
+              first = false;
+            }
+          }
+        };
+        add(spec.coreAdd || [], 3, 'core');
+        add(spec.outerAdd || [], 3, 'outer');
+
+      },
+
+      clearEffects: function () { st.effects.length = 0; },
+
+      /** Rejestruje prostokąt zajmowany przez panel parametrów (w px sceny). */
+      setPanelRect: function (rect) { st.panelRect = rect; },
+
+      /**
+       * Podpowiedź pod elementami podziałki: chorągiewki wieku i podziałka lat.
+       * Zwraca {title, text} albo null (kursor poza tymi elementami).
+       */
+      hitTest: function (px, py) {
+        for (const b of (st.msBadges || [])) {
+          if (Math.hypot(px - b.x, py - b.y) <= b.r + 3) {
+            return {
+              title: 'Twój wiek',
+              text: 'Wiek <b>' + b.years + ' lat</b> — miesiąc ' + b.month + ' (' + Dates.mmYyyy(b.month) +
+                '), czyli ' + Fmt.yearsWord(b.month / 12) + ' od startu symulacji.'
+            };
+          }
+        }
+        for (const t of (st.rulerTicks || [])) {
+          if (Math.abs(px - t.x) <= 11 && py >= t.y - 12 && py <= t.y + 16) {
+            return {
+              title: 'Horyzont czasowy',
+              text: '<b>' + Fmt.yearsWord(t.years) + '</b> od startu — miesiąc ' + t.month + ' (' + Dates.mmYyyy(t.month) + ').'
+            };
+          }
+        }
+        return null;
+      },
+
+      /** Migawka stanu sceny — wykorzystywana w testach automatycznych (QA). */
+      snapshot: function () {
+        return {
+          ball: { x: st.ball.x, y: st.ball.y, r: st.ball.r },
+          card: { x: st.cardX, y: st.cardY },
+          cardRect: st.cardRect,
+          panel: st.panelRect,
+          leaders: st.leaderCount || 0,      // ile linii prowadzących zostało narysowanych
+          far: st.cardFar || false,          // czy okienko wylądowało w rogu (brak linii)
+          badges: (st.msBadges || []).map(function (b) { return { x: b.x, y: b.y, r: b.r }; }),
+          month: st.month
+        };
+      },
+
+      /** Główna klatka animacji. */
+      draw: function (dt) {
+        st.time += dt;
+
+        // --- wygładzona pozycja na zboczu (płynne przewijanie przy skokach) ---
+        const k = 1 - Math.exp(-dt * 7);
+        st.progress += (st.targetProgress - st.progress) * k;
+
+        const path = pathAt(st.progress);
+        // promień kuli: powolny, wygładzony wzrost
+        const rTarget = radiusFor(st.capital);
+        st.ball.r += (rTarget - st.ball.r) * (1 - Math.exp(-dt * 3.2));
+        const r = st.ball.r;
+        st.ball.x = path.x + path.nx * r;
+        st.ball.y = path.y + path.ny * r;
+
+        // --- obrót kuli: przejechany dystans / promień (szybsza symulacja => szybszy obrót) ---
+        const dProg = st.progress - st.lastProgress;
+        st.roll -= Math.min(0.5, (dProg * st.pathLen) / Math.max(8, r));
+        st.lastProgress = st.progress;
+
+        // statyczne warstwy trafiają na ekran z buforów off-screen
+        ctx.drawImage(bgLayer.canvas, 0, 0, W, H);
+        drawStars();
+        ctx.drawImage(fgLayer.canvas, 0, 0, W, H);
+        drawTrees(ctx);
+        drawStartFinish(ctx);
+        drawTimeRuler(ctx);           // podziałka czasu na dole sceny
+        drawAgeFlags(ctx);            // kamienie milowe WIEKU nad podziałką
+        drawBall(path);
+        drawHint();
+        const cardL = cardLayout(dt);          // pozycja okienka informacji
+        drawInfoCard(cardL);                   // okienko informacji stoi zawsze obok kuli
+        drawLeaderLines(cardL);                // linie: „z wkładów” → rdzeń, „z odsetek” → warstwa
+        updateEffects(dt);
+        drawEffects();
+        ctx.drawImage(vigLayer.canvas, 0, 0, W, H);
+      }
+    };
+
+    function defaultState() {
+      const N = Simulation.LADDER.length;
+      return {
+        capital: 0, contribution: 500, progress: 0, month: 0,
+        core: new Array(N).fill(0), outer: new Array(N).fill(0),
+        cardMonth: -1
+      };
+    }
+
+    /* ------------------------------------------------- budowa statycznych warstw --- */
+    function buildLayers() {
+      bgLayer = makeLayer();
+      drawSky(bgLayer.ctx);
+      drawMountains(bgLayer.ctx);
+
+      fgLayer = makeLayer();
+      drawGround(fgLayer.ctx);
+
+      vigLayer = makeLayer();
+      drawVignette(vigLayer.ctx);
+    }
+
+    /* ------------------------------------------------------------------ niebo --- */
+    function drawSky(c) {
+      const g = c.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, '#0a1130');
+      g.addColorStop(0.45, '#1d2a5c');
+      g.addColorStop(0.78, '#4a3b78');
+      g.addColorStop(1, '#8a5a7a');
+      c.fillStyle = g;
+      c.fillRect(0, 0, W, H);
+
+      // poświata zachodzącego słońca (lewa część nieba — zostaje miejsce na heatmapę)
+      const sunX = W * 0.38, sunY = H * 0.13;
+      const sg = c.createRadialGradient(sunX, sunY, 0, sunX, sunY, Math.max(W, H) * 0.42);
+      sg.addColorStop(0, 'rgba(255,214,170,.50)');
+      sg.addColorStop(0.18, 'rgba(255,170,130,.18)');
+      sg.addColorStop(1, 'rgba(255,150,120,0)');
+      c.fillStyle = sg;
+      c.fillRect(0, 0, W, H);
+      c.beginPath();
+      c.arc(sunX, sunY, 19 * unit, 0, TAU);
+      c.fillStyle = 'rgba(255,236,205,.9)';
+      c.fill();
+
+      // v15: delikatna zorza (odrobinę zieleni) nad prawą stroną horyzontu
+      const au = c.createRadialGradient(W * 0.74, H * 0.42, 0, W * 0.74, H * 0.42, Math.max(W, H) * 0.52);
+      au.addColorStop(0, 'rgba(70,220,150,.16)');
+      au.addColorStop(0.55, 'rgba(70,220,150,.05)');
+      au.addColorStop(1, 'rgba(70,220,150,0)');
+      c.fillStyle = au;
+      c.fillRect(0, 0, W, H);
+    }
+
+    /* ---------------------------------------------------------------- gwiazdy --- */
+    function drawStars() {
+      ctx.fillStyle = 'rgba(255,255,255,.65)';
+      for (let i = 0; i < 46; i++) {
+        const x = hash(i, 3) * W;
+        const y = hash(i, 9) * H * 0.55;
+        const tw = 0.35 + 0.65 * Math.abs(Math.sin(st.time * 0.8 + i));
+        ctx.globalAlpha = tw * 0.5;
+        ctx.fillRect(x, y, 1.6, 1.6);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    /* ------------------------------------------------------- góry w tle (paralaksa) --- */
+    function drawMountains(c) {
+      const layers = [
+        { base: 0.20, amp: 0.07, color: 'rgba(120,140,205,.28)', off: 0.02 },
+        { base: 0.28, amp: 0.09, color: 'rgba(74,88,150,.55)', off: 0.05 }
+      ];
+      layers.forEach(function (L, li) {
+        c.beginPath();
+        c.moveTo(-40, H);
+        const n = 26;
+        for (let i = 0; i <= n; i++) {
+          const x = (i / n) * (W + 80) - 40;
+          const y = H * (L.base + L.amp * Math.sin(i * 1.7 + li * 2.3) * 0.5 + hash(i, li) * L.amp);
+          c.lineTo(x, y);
+        }
+        c.lineTo(W + 40, H);
+        c.closePath();
+        c.fillStyle = L.color;
+        c.fill();
+      });
+    }
+
+    /* ------------------------------------------------------------- zbocze i tor --- */
+    function drawGround(c) {
+      const end = hill.pt(1);
+      const endTan = hill.tan(1);
+      const ext = { x: end.x + endTan.x * 220, y: end.y + endTan.y * 220 };
+
+      c.beginPath();
+      c.moveTo(0, H);
+      for (let i = 0; i <= 64; i++) {
+        const t = i / 64;
+        const p = hill.pt(t);
+        c.lineTo(p.x, p.y);
+      }
+      c.lineTo(ext.x, ext.y);
+      c.lineTo(W + 40, H);
+      c.closePath();
+      const gg = c.createLinearGradient(0, H * 0.05, 0, H);
+      gg.addColorStop(0, '#1b2c4d');
+      gg.addColorStop(0.45, '#132340');
+      gg.addColorStop(1, '#0a1123');
+      c.fillStyle = gg;
+      c.fill();
+
+      function strokeTrack(width, color, alpha) {
+        c.beginPath();
+        for (let i = 0; i <= 64; i++) {
+          const t = i / 64;
+          const p = hill.pt(t);
+          if (i === 0) c.moveTo(p.x, p.y); else c.lineTo(p.x, p.y);
+        }
+        c.lineTo(ext.x, ext.y);
+        c.lineWidth = width;
+        c.strokeStyle = color;
+        c.globalAlpha = alpha;
+        c.lineCap = 'round';
+        c.stroke();
+        c.globalAlpha = 1;
+      }
+      strokeTrack(34 * unit, 'rgba(6,12,26,.55)', 1);
+      strokeTrack(26 * unit, 'rgba(226,236,255,.85)', 1);
+      strokeTrack(14 * unit, 'rgba(255,255,255,.55)', 1);
+    }
+
+    /* ------------------------------------------------------- znaczniki start/finisz --- */
+    function drawStartFinish(c) {
+      const p0 = hill.pt(0.012);
+      p0.x -= 20 * unit;   // flaga z boku, żeby nie chowała się pod kulą na starcie
+      const font = FONT;
+      c.strokeStyle = 'rgba(230,240,255,.6)';
+      c.lineWidth = 2 * unit;
+      c.beginPath();
+      c.moveTo(p0.x, p0.y - 2);
+      c.lineTo(p0.x, p0.y - 42 * unit);
+      c.stroke();
+      c.fillStyle = 'rgba(95,227,192,.9)';
+      c.beginPath();
+      c.moveTo(p0.x, p0.y - 42 * unit);
+      c.lineTo(p0.x + 32 * unit, p0.y - 33 * unit);
+      c.lineTo(p0.x, p0.y - 24 * unit);
+      c.closePath();
+      c.fill();
+      // v14u: bez napisu „START” — początek osi oznacza już „0” na podziałce
+      // (napis kolidował z okienkiem informacji przy miesiącu 0)
+      c.fillStyle = '#06131a';
+      c.font = '700 ' + (9.5 * unit).toFixed(1) + 'px ' + font;
+      c.textAlign = 'left';
+    }
+
+    /* --------------------------- podziałka czasu na dole sceny + kamienie milowe --- */
+    /**
+     * Na dole sceny rysujemy PODZIAŁKĘ — prostą oś czasu z podziałką co N lat
+     * (N zależy od horyzontu). Nad nią stoją „kamienie milowe” WIEKU:
+     * chorągiewki 20, 30, 40… (czyli: „za tyle lat to będziesz miał tyle lat”).
+     */
+    function drawTimeRuler(c) {
+      const hz = st.horizon || 600;
+      const step = st.rulerStep || 10;
+      const x0 = 16 * unit, x1 = W - 16 * unit;
+      const axisY = H - 12 * unit;
+      const X = function (m) { return x0 + (m / hz) * (x1 - x0); };
+
+      // oś czasu
+      c.strokeStyle = 'rgba(180,196,230,.40)';
+      c.lineWidth = 1.2 * unit;
+      c.beginPath(); c.moveTo(x0, axisY); c.lineTo(x1, axisY); c.stroke();
+
+      // podziałka co N lat + podpisy
+      c.textAlign = 'center';
+      c.textBaseline = 'alphabetic';
+      st.rulerTicks = [];          // v15: pozycje podziałki (podpowiedzi po najechaniu)
+      for (let yy = step; yy * 12 <= hz; yy += step) {
+        const x = X(yy * 12);
+        c.strokeStyle = 'rgba(180,196,230,.55)';
+        c.lineWidth = 1 * unit;
+        c.beginPath(); c.moveTo(x, axisY - 4 * unit); c.lineTo(x, axisY + 4 * unit); c.stroke();
+        c.fillStyle = 'rgba(205,218,244,.78)';
+        c.font = '600 ' + Math.max(8, 10 * unit).toFixed(1) + 'px ' + FONT;
+        c.fillText(String(yy), x, axisY + 12 * unit);
+        st.rulerTicks.push({ x: x, years: yy, month: yy * 12, y: axisY });
+      }
+      // początek osi (0 lat od startu) — podpis pod osią, żeby nie kolidował z chorągiewkami
+      c.fillStyle = 'rgba(205,218,244,.6)';
+      c.font = '600 ' + Math.max(7, 9 * unit).toFixed(1) + 'px ' + FONT;
+      c.textAlign = 'left'; c.fillText('0', x0 - 4 * unit, axisY + 12 * unit);
+      c.textAlign = 'center';
+    }
+
+    /**
+     * Kamienie milowe WIEKU nad podziałką: małe chorągiewki z wiekiem
+     * (20, 30, 40…). Po osiągnięciu tabliczka rozświetla się na złoto.
+     */
+    function drawAgeFlags(c) {
+      const list = st.milestones || [];
+      const hz = st.horizon || 600;
+      const x0 = 16 * unit, x1 = W - 16 * unit;
+      const axisY = H - 12 * unit;
+      const X = function (m) { return x0 + (m / hz) * (x1 - x0); };
+      st.msBadges = [];
+      const bw = Math.max(20, 26 * unit), bh = Math.max(13, 17 * unit);
+      for (const ms of list) {
+        const x = X(ms.month);
+        const reached = st.month >= ms.month;
+        const topY = axisY - 7 * unit - bh;
+
+        // masztek od podziałki do tabliczki
+        c.strokeStyle = reached ? 'rgba(246,196,99,.85)' : 'rgba(200,214,240,.5)';
+        c.lineWidth = 1.5 * unit;
+        c.beginPath(); c.moveTo(x, axisY - 3 * unit); c.lineTo(x, topY + bh); c.stroke();
+
+        // tabliczka (prostokąt ze wskazówką w dół)
+        c.beginPath();
+        c.moveTo(x - bw / 2, topY);
+        c.lineTo(x + bw / 2, topY);
+        c.lineTo(x + bw / 2, topY + bh);
+        c.lineTo(x, topY + bh + 5 * unit);
+        c.lineTo(x - bw / 2, topY + bh);
+        c.closePath();
+        c.fillStyle = reached ? 'rgba(246,196,99,.96)' : 'rgba(9,14,32,.92)';
+        c.fill();
+        c.strokeStyle = reached ? 'rgba(255,240,206,.95)' : 'rgba(200,214,240,.75)';
+        c.lineWidth = 1.3 * unit;
+        c.stroke();
+
+        // wiek
+        c.fillStyle = reached ? '#2a1c05' : '#f6c463';
+        c.font = '700 ' + Math.max(8, 11 * unit).toFixed(1) + 'px ' + FONT;
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        c.fillText(String(ms.years), x, topY + bh * 0.5);
+        c.textBaseline = 'alphabetic';
+
+        st.msBadges.push({ x: x, y: topY + bh * 0.5, r: Math.max(11, bw * 0.5),
+                           years: ms.years, month: ms.month });
+      }
+    }
+
+    /* ------------------------------------------------------------- świerki na zboczu --- */
+    function drawTrees(c) {
+      const n = W < 560 ? 13 : 18;      // na telefonie mniej świerków, by nie zasłaniały znaków
+      const shift = st.progress * 26 * unit;
+      for (let i = 0; i < n; i++) {
+        const t = 0.04 + (i / n) * 0.92 + hash(i, 5) * 0.025;
+        const p = hill.pt(t);
+        const tg = hill.tan(t);
+        const depth = (56 + hash(i, 11) * 80) * unit;   // dalej od toru — miejsce na znaczniki dekad
+        const x = p.x - tg.y * depth - shift * 0.4;
+        const y = p.y + tg.x * depth;
+        const hgt = (34 + hash(i, 17) * 46) * unit;
+        const wid = hgt * 0.44;
+        c.fillStyle = 'rgba(7,15,30,.95)';
+        c.beginPath();
+        c.moveTo(x, y - hgt);
+        c.lineTo(x + wid * 0.52, y);
+        c.lineTo(x - wid * 0.52, y);
+        c.closePath();
+        c.fill();
+        c.beginPath();
+        c.moveTo(x, y - hgt * 0.66);
+        c.lineTo(x + wid * 0.78, y - hgt * 0.04);
+        c.lineTo(x - wid * 0.78, y - hgt * 0.04);
+        c.closePath();
+        c.fill();
+      }
+    }
+
+    /* ----------------------------------------------------------------- winieta --- */
+    function drawVignette(c) {
+      const g = c.createRadialGradient(W * 0.5, H * 0.45, Math.min(W, H) * 0.35, W * 0.5, H * 0.5, Math.max(W, H) * 0.78);
+      g.addColorStop(0, 'rgba(0,0,0,0)');
+      g.addColorStop(1, 'rgba(0,0,0,.42)');
+      c.fillStyle = g;
+      c.fillRect(0, 0, W, H);
+    }
+
+    /* --------------------------------------------------------------- kula z kropek --- */
+    function drawBall(path) {
+      const b = st.ball;
+      const r = b.r;
+
+      // poświata „bogactwa”
+      const glow = Math.min(1, Math.log10(1 + st.capital / 1000) / 3);
+      if (glow > 0.02 && r > 6) {
+        const gg = ctx.createRadialGradient(b.x, b.y, r * 0.7, b.x, b.y, r * 2.1);
+        gg.addColorStop(0, 'rgba(246,196,99,' + (0.18 * glow).toFixed(3) + ')');
+        gg.addColorStop(1, 'rgba(246,196,99,0)');
+        ctx.fillStyle = gg;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, r * 2.1, 0, TAU);
+        ctx.fill();
+      }
+
+      // cień pod kulą
+      ctx.save();
+      ctx.globalAlpha = 0.35;
+      ctx.fillStyle = '#000';
+      ctx.beginPath();
+      ctx.ellipse(b.x + r * 0.12, b.y + r * 0.9, r * 0.92, r * 0.26, 0, 0, TAU);
+      ctx.fill();
+      ctx.restore();
+
+      // 1) śnieżna baza kuli
+      const g = ctx.createRadialGradient(b.x - r * 0.34, b.y - r * 0.42, r * 0.08, b.x, b.y, r * 1.04);
+      g.addColorStop(0, '#ffffff');
+      g.addColorStop(0.5, '#e4ecff');
+      g.addColorStop(0.85, '#b9c8e8');
+      g.addColorStop(1, '#8d9ec4');
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, r, 0, TAU);
+      ctx.fillStyle = g;
+      ctx.fill();
+
+      // 2) warstwa odsetek dostaje chłodne, lodowe tło — widać, że to inna strefa
+      const rc = r * st.coreFrac;
+      if (r > 8) {
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, r, 0, TAU);
+        ctx.arc(b.x, b.y, rc * 1.02, 0, TAU, true);
+        ctx.fillStyle = 'rgba(120,170,255,.20)';
+        ctx.fill('evenodd');
+      }
+
+      // 2a) kropki rdzenia (wkłady) — pełne krążki
+      drawDots(st.coreDots, b, r);
+
+      // 2b) ciemny „rowek” — wyraźna granica między rdzeniem a warstwą odsetek
+      if (r > 10) {
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, rc * 1.09, 0, TAU);
+        ctx.arc(b.x, b.y, rc * 0.91, 0, TAU, true);
+        ctx.fillStyle = 'rgba(7,12,28,.94)';
+        ctx.fill('evenodd');
+      }
+      drawDots(st.outerDots, b, r);
+
+      // 2b) cienka jasna krawędź rowka
+      if (r > 14) {
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, rc, 0, TAU);
+        ctx.strokeStyle = 'rgba(255,255,255,.42)';
+        ctx.lineWidth = Math.max(0.8, 1.2 * unit);
+        ctx.stroke();
+      }
+
+      // 4) objętość kuli: cieniowanie + refleks
+      if (r > 6) {
+        const sh = ctx.createRadialGradient(b.x - r * 0.34, b.y - r * 0.4, r * 0.05, b.x, b.y, r * 1.02);
+        sh.addColorStop(0, 'rgba(255,255,255,.22)');
+        sh.addColorStop(0.5, 'rgba(255,255,255,0)');
+        sh.addColorStop(1, 'rgba(5,10,26,.55)');
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, r, 0, TAU);
+        ctx.fillStyle = sh;
+        ctx.fill();
+      }
+      ctx.globalAlpha = 0.5;
+      ctx.beginPath();
+      ctx.ellipse(b.x - r * 0.34, b.y - r * 0.46, r * 0.28, r * 0.17, -0.5, 0, TAU);
+      ctx.fillStyle = '#fff';
+      ctx.fill();
+      ctx.globalAlpha = 1;
+
+    }
+
+
+    /** Rysuje kropki (znormalizowane) z perspektywą kuli. */
+    function drawDots(dots, b, r) {
+      if (!dots.length) return;
+      const cos = Math.cos(st.roll), sin = Math.sin(st.roll);
+      for (let i = 0; i < dots.length; i++) {
+        const d = dots[i];
+        const x = d.x * r, y = d.y * r;
+        const rx = x * cos - y * sin, ry = x * sin + y * cos;
+        // głębia kropki na kuli (perspektywa)
+        const z = Math.sqrt(Math.max(0, 1 - (d.x * d.x + d.y * d.y)));
+        const rad = Math.max(0.9, d.r * r * (0.58 + 0.42 * z));
+        const col = d.color || Simulation.DENOM_META[d.v].color;
+        ctx.beginPath();
+        ctx.arc(b.x + rx, b.y + ry, rad, 0, TAU);
+        if (d.hollow && rad > 2.2) {
+          // warstwa odsetek: pusta obrączka (jak obwódka kroplówki) — odróżnia się od pełnych kropek rdzenia
+          ctx.fillStyle = 'rgba(255,255,255,.12)';
+          ctx.fill();
+          ctx.strokeStyle = col;
+          ctx.lineWidth = Math.max(1, rad * 0.34);
+          ctx.stroke();
+        } else {
+          ctx.fillStyle = col;
+          ctx.fill();
+          if (rad > 2.4) {
+            ctx.strokeStyle = 'rgba(6,10,22,.5)';
+            ctx.lineWidth = Math.max(0.6, rad * 0.18);
+            ctx.stroke();
+          }
+        }
+      }
+    }
+
+
+    /** Podpowiedź na starcie — jak rozpocząć (dla osoby, która pierwszy raz widzi apkę). */
+    function drawHint() {
+      if (st.month !== 0) return;
+      // podpowiedź stoi w stałym miejscu (lewy dolny róg), ale NAD podziałką
+      // i chorągiewkami wieku (v14u) — żeby niczego nie zasłaniała
+      const x = 16;
+      const bh = Math.max(13, 17 * unit);                 // wysokość chorągiewki
+      const y = H - 19 * unit - bh - 25;                 // tuż nad paskiem podziałki
+      ctx.save();
+      ctx.font = '600 ' + (12 * Math.max(0.85, unit)).toFixed(1) + 'px ' + FONT;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      const lines = ['Odtwórz ▶', 'kula rośnie z każdą wpłatą'];
+      const wTxt = Math.max(ctx.measureText(lines[0]).width, ctx.measureText(lines[1]).width);
+      ctx.beginPath();
+      roundRect(ctx, x - 10, y - 19, wTxt + 20, 38, 10);
+      ctx.fillStyle = 'rgba(6,11,26,.8)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(95,227,192,.4)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = '#5fe3c0';
+      ctx.fillText(lines[0], x, y - 9);
+      ctx.fillStyle = 'rgba(255,255,255,.7)';
+      ctx.font = (11 * Math.max(0.85, unit)).toFixed(1) + 'px ' + FONT;
+      ctx.fillText(lines[1], x, y + 8);
+      ctx.restore();
+    }
+
+    /**
+     * JEDNO okienko informacji, stojące zawsze obok kuli:
+     *   • comiesięczny wkład i miesięczne odsetki (co wpada do kuli),
+     *   • stan zgromadzonego kapitału i jego podział (co jest w kuli).
+     * Pozycja jest wybierana spośród czterech miejsc (nad kulą, pod kulą, obok)
+     * i ZAWSZE przycinana do ramy — okienko nigdy nie wychodzi poza ekran.
+     * Po zmianie miesiąca krótko pulsuje (delikatna poświata).
+     */
+    /**
+     * Układ okienka informacji: liczy pozycję (z płynnym przesuwaniem) i zwraca
+     * prostokąt wraz z pozycjami wierszy. Wiersze są potrzebne także liniom
+     * prowadzącym do warstw kuli, stąd wydzielenie tego kroku od samego rysowania.
+     */
+    function cardLayout(dt) {
+      const compact = W < 430;                 // telefon: mniejsze okienko (siatka 2×2)
+      const w = Math.min(compact ? 184 : 220, W - 16);
+      const h = compact ? 84 : 100;
+      // rowY = pozycja etykiety wiersza, valY = pozycja wartości (pod etykietą na telefonie)
+      const rowY = compact ? [28, 28, 57, 57] : [32, 49, 74, 90];
+      const valY = compact ? [40, 40, 69, 69] : [32, 49, 74, 90];
+      const colX = compact ? [12, w / 2 + 2] : [13, 13, 13, 13];
+      const b = st.ball, r = b.r;
+      const panel = st.panelRect;              // panel parametrów w prawym górnym rogu
+      const hitsPanel = function (cx, cy) {
+        if (!panel) return false;
+        return cx + w / 2 > panel.x && cx - w / 2 < panel.x + panel.w &&
+               cy + h / 2 > panel.y && cy - h / 2 < panel.y + panel.h;
+      };
+      // okienko nie może zasłaniać tabliczek dekad (chorągiewek przy torze)
+      const badges = st.msBadges || [];
+      const hitsBadge = function (cx, cy) {
+        for (const bg of badges) {
+          if (Math.abs(cx - bg.x) < w / 2 + bg.r && Math.abs(cy - bg.y) < h / 2 + bg.r) return true;
+        }
+        return false;
+      };
+      // okienko nie może przykryć samej kuli — kula jest główną bohaterką sceny
+      const hitsBall = function (cx, cy) {
+        const nx = Math.max(cx - w / 2, Math.min(b.x, cx + w / 2));
+        const ny = Math.max(cy - h / 2, Math.min(b.y, cy + h / 2));
+        return Math.hypot(b.x - nx, b.y - ny) < r + 4;
+      };
+      const fits = function (cx, cy) {
+        return cx - w / 2 >= 6 && cx + w / 2 <= W - 6 && cy - h / 2 >= 6 && cy + h / 2 <= H - 6 &&
+               !hitsPanel(cx, cy) && !hitsBadge(cx, cy) && !hitsBall(cx, cy);
+      };
+      // pozycje prób: nad kulą → pod kulą → w prawo → w lewo → po przekątnych
+      //              → szersze warianty (większy odstęp od kuli) → narożniki sceny
+      const dg = 0.75;                         // przesunięcie po przekątnej (część promienia kuli)
+      const cands = [
+        [b.x, b.y - r - 12 - h / 2],
+        [b.x, b.y + r + 12 + h / 2],
+        [b.x + r + 12 + w / 2, b.y],
+        [b.x - r - 12 - w / 2, b.y],
+        [b.x + r * dg + 16 + w / 2, b.y - r * dg - 16 - h / 2],
+        [b.x - r * dg - 16 - w / 2, b.y - r * dg - 16 - h / 2],
+        [b.x + r * dg + 16 + w / 2, b.y + r * dg + 16 + h / 2],
+        [b.x - r * dg - 16 - w / 2, b.y + r * dg + 16 + h / 2]
+      ];
+      // Szersze warianty: gdy tuż przy kuli stoi panel parametrów albo
+      // chorągiewka dekady, karta odsuwa się od kuli i nadal trzyma się
+      // jej w pobliżu — dzięki temu linie prowadzące zostają krótkie.
+      for (const g of [34, 72]) {
+        cands.push(
+          [b.x, b.y - r - 12 - g - h / 2],
+          [b.x, b.y + r + 12 + g + h / 2],
+          [b.x + r + 12 + g + w / 2, b.y],
+          [b.x - r - 12 - g - w / 2, b.y],
+          [b.x + r * dg + 16 + g + w / 2, b.y - r * dg - 16 - g - h / 2],
+          [b.x - r * dg - 16 - g - w / 2, b.y - r * dg - 16 - g - h / 2],
+          [b.x + r * dg + 16 + g + w / 2, b.y + r * dg + 16 + g + h / 2],
+          [b.x - r * dg - 16 - g - w / 2, b.y + r * dg + 16 + g + h / 2]
+        );
+      }
+      // Dodatkowe warianty: karta OBOK kuli, ale przesunięta w pionie.
+      // Pomagają, gdy przy torze stoi chorągiewka dekady i blokuje pozycję
+      // „na wprost” — dzięki nim okienko zostaje blisko kuli (są krótkie linie).
+      for (const g of [0, 34, 72]) {
+        cands.push(
+          [b.x - r - 12 - g - w / 2, b.y - 46],
+          [b.x - r - 12 - g - w / 2, b.y + 46],
+          [b.x + r + 12 + g + w / 2, b.y - 46],
+          [b.x + r + 12 + g + w / 2, b.y + 46]
+        );
+      }
+      // narożniki sceny — wybieramy ten najbliższy kuli
+      cands.push.apply(cands, [
+        [w / 2 + 6, h / 2 + 6],
+        [W - w / 2 - 6, h / 2 + 6],
+        [w / 2 + 6, H - h / 2 - 6],
+        [W - w / 2 - 6, H - h / 2 - 6]
+      ].sort(function (a, c) {
+        return Math.hypot(a[0] - b.x, a[1] - b.y) - Math.hypot(c[0] - b.x, c[1] - b.y);
+      }));
+      let tx = cands[0][0], ty = cands[0][1];
+      let far = true;                          // czy okienko wylądowało w rogu (brak linii)
+      let found = false;
+      for (const c of cands) {
+        if (fits(c[0], c[1])) { tx = c[0]; ty = c[1]; far = false; found = true; break; }
+      }
+      if (!found) {
+        // nic nie pasuje idealnie → wybieramy wariant z najmniejszą kolizją
+        let bestCost = Infinity, bx = cands[0][0], by = cands[0][1];
+        for (const c of cands) {
+          const cxx = Math.max(w / 2 + 6, Math.min(W - w / 2 - 6, c[0]));
+          const cyy = Math.max(h / 2 + 6, Math.min(H - h / 2 - 6, c[1]));
+          let cost = 0;
+          if (panel) {                          // kara za wejście pod panel parametrów
+            const ox = Math.min(cxx + w / 2, panel.x + panel.w) - Math.max(cxx - w / 2, panel.x);
+            const oy = Math.min(cyy + h / 2, panel.y + panel.h) - Math.max(cyy - h / 2, panel.y);
+            if (ox > 0 && oy > 0) cost += ox * oy;
+          }
+          for (const bg of badges) {           // kara za zasłonięcie tabliczki dekady
+            const ox = Math.min(cxx + w / 2, bg.x + bg.r) - Math.max(cxx - w / 2, bg.x - bg.r);
+            const oy = Math.min(cyy + h / 2, bg.y + bg.r) - Math.max(cyy - h / 2, bg.y - bg.r);
+            if (ox > 0 && oy > 0) cost += ox * oy;
+          }
+          {                                       // kara za zasłonięcie samej kuli
+            const nx = Math.max(cxx - w / 2, Math.min(b.x, cxx + w / 2));
+            const ny = Math.max(cyy - h / 2, Math.min(b.y, cyy + h / 2));
+            const dd = Math.hypot(b.x - nx, b.y - ny);
+            if (dd < r + 4) cost += (r + 4 - dd) * 200;
+          }
+          // lekka preferencja dla pozycji blisko kuli (krótsze linie prowadzące)
+          cost += Math.hypot(cxx - b.x, cyy - b.y) * 0.05;
+          if (cost < bestCost) { bestCost = cost; bx = cxx; by = cyy; }
+        }
+        tx = bx; ty = by;
+      }
+      tx = Math.max(w / 2 + 6, Math.min(W - w / 2 - 6, tx));
+      ty = Math.max(h / 2 + 6, Math.min(H - h / 2 - 6, ty));
+      // linie prowadzące mają sens tylko przy oknie w pobliżu kuli
+      const near = Math.hypot(tx - b.x, ty - b.y) < 340;
+
+      // płynne przesuwanie okienka (bez skoków)
+      if (st.cardX === null || st.cardX === undefined) { st.cardX = tx; st.cardY = ty; }
+      else {
+        const kk = 1 - Math.exp(-dt * 6);
+        st.cardX += (tx - st.cardX) * kk;
+        st.cardY += (ty - st.cardY) * kk;
+        // przy animacji okienko nie może wysunąć się poza kadr
+        st.cardX = Math.max(w / 2 + 6, Math.min(W - w / 2 - 6, st.cardX));
+        st.cardY = Math.max(h / 2 + 6, Math.min(H - h / 2 - 6, st.cardY));
+      }
+      st.cardRect = { x: st.cardX - w / 2, y: st.cardY - h / 2, w: w, h: h };
+      st.cardFar = !near;
+      return { x: st.cardX - w / 2, y: st.cardY - h / 2, w: w, h: h, rowY: rowY, valY: valY, colX: colX, compact: compact, far: !near };
+    }
+
+    /**
+     * Linie prowadzące od okienka informacji do warstw kuli:
+     * „z wkładów” → rdzeń (pełne kropki w środku), „z odsetek” → warstwa zewnętrzna.
+     * Linia wychodzi z krawędzi okienka po stronie kuli i kończy się na właściwej
+     * warstwie — dzięki temu od razu widać, co jest wkładem, a co odsetkami.
+     */
+    function drawLeaderLines(L) {
+      const b = st.ball, r = b.r;
+      st.leaderCount = 0;
+      if (L.far) return;                      // okienko w rogu — linie tylko by przebiegały
+      const rc = r * st.coreFrac;
+      const cx = L.x + L.w / 2, cy = L.y + L.h / 2;
+      const dx = b.x - cx, dy = b.y - cy;
+      // Kula startuje jako maleńka kropka — wtedy rdzeń i warstwa zlewają się.
+      // Rozrzut linii rośnie wraz z „dojrzałością” kuli, żeby mięta i złoto
+      // były rozróżnialne OD SAMEGO POCZĄTKU symulacji.
+      const small = Math.max(0, Math.min(1, 1 - r / 45));
+      const fan = 0.13 + 0.5 * small;
+      const minRad = 3 + 2.5 * small;
+      // na telefonie okienko ma siatkę 2×2, więc łącznik wewnątrz okienka
+      // przecinałby tekst — linie wychodzą wprost z krawędzi najbliższej kuli,
+      // a powiązanie z etykietą koduje kolor (mięta = rdzeń, złoto = warstwa)
+      const side = L.compact ? true : Math.abs(dx) > Math.abs(dy) * 1.2;   // kula obok okienka
+      const defs = [
+        { i: 2, color: '#5fe3c0', rad: Math.max(rc * 0.72, minRad) },        // rdzeń = wkłady
+        { i: 3, color: '#f6c463', rad: Math.max((rc * 1.09 + r) / 2, minRad) } // warstwa zewnętrzna = odsetki
+      ];
+      for (const def of defs) {
+        const col = L.compact ? (def.i % 2) : 0;
+        // znacznik (kółko) przy etykiecie wiersza
+        const M = { x: L.x + L.colX[col] + 4, y: L.y + L.rowY[def.i] };
+        let port;                                                    // punkt wyjścia na krawędzi okienka
+        if (L.compact) {
+          // port w połowie kolumny/wiersza swojej etykiety → linie się nie zlewają
+          if (Math.abs(dy) > Math.abs(dx)) {                           // kula nad/pod okienkiem
+            const px = L.x + L.colX[col] + 38;
+            port = { x: px, y: dy > 0 ? L.y + L.h : L.y };
+          } else {                                                    // kula obok okienka
+            const py = L.y + (def.i === 2 ? L.rowY[2] - 3 : L.valY[3]);
+            port = { x: dx > 0 ? L.x + L.w : L.x, y: py };
+          }
+        } else if (side) {
+          port = { x: dx > 0 ? L.x + L.w : L.x, y: M.y };
+        } else {
+          // okienko nad kulą albo pod nią — porty przy końcach wierszy, żeby się nie zlały
+          port = { x: L.x + L.w - (def.i === 2 ? 62 : 26), y: dy > 0 ? L.y + L.h : L.y };
+        }
+        // kierunek od kuli do portu + mały rozrzut, żeby obie linie się nie zlewały
+        const vx = port.x - b.x, vy = port.y - b.y;
+        const len = Math.hypot(vx, vy) || 1;
+        const ang = Math.atan2(vy / len, vx / len) + (def.i === 2 ? -fan : fan);
+        const T = { x: b.x + Math.cos(ang) * def.rad, y: b.y + Math.sin(ang) * def.rad };
+
+        ctx.save();
+        // właściwa linia: port → warstwa kuli
+        ctx.beginPath();
+        ctx.moveTo(port.x, port.y);
+        ctx.lineTo(T.x, T.y);
+        ctx.strokeStyle = def.color;
+        ctx.globalAlpha = 0.9;
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        // znacznik na krawędzi okienka — pokazuje, z którego miejsca wychodzi linia
+        ctx.beginPath();
+        ctx.arc(port.x, port.y, 3.2, 0, TAU);
+        ctx.fillStyle = def.color;
+        ctx.fill();
+        // znacznik miejsca, w którym linia wchodzi w warstwę kuli
+        ctx.beginPath();
+        ctx.arc(T.x, T.y, 3, 0, TAU);
+        ctx.fillStyle = def.color;
+        ctx.fill();
+        st.leaderCount++;
+        ctx.restore();
+      }
+    }
+
+    /** Rysuje okienko informacji (dwie warstwy: przepływ miesięczny i stan kapitału). */
+    function drawInfoCard(L) {
+      const x = L.x, y = L.y, w = L.w, h = L.h, rowY = L.rowY, valY = L.valY, colX = L.colX, compact = L.compact;
+      // puls po zmianie miesiąca
+      if (st.cardMonth !== st.month) { st.cardMonth = st.month; st.cardPulse = 1; }
+      st.cardPulse = Math.max(0, st.cardPulse - 0.018);
+
+      const total = st.coreValue + st.outerValue;
+      const pcCore = total > 0 ? Math.round(st.coreValue / total * 100) : 0;
+      const pcOuter = total > 0 ? 100 - pcCore : 0;
+
+      ctx.save();
+      // tło + obwódka (puls = mocniejsza poświata przy zmianie miesiąca)
+      ctx.beginPath();
+      roundRect(ctx, x, y, w, h, 11);
+      ctx.fillStyle = 'rgba(6,11,26,.97)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(95,227,192,' + (0.35 + 0.5 * st.cardPulse).toFixed(2) + ')';
+      ctx.lineWidth = 1.2 + st.cardPulse * 1.1;
+      ctx.stroke();
+      if (st.cardPulse > 0.01) {
+        ctx.shadowColor = 'rgba(95,227,192,' + (0.5 * st.cardPulse).toFixed(2) + ')';
+        ctx.shadowBlur = 16 * st.cardPulse;
+        ctx.stroke();
+      }
+
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'left';
+      // nagłówek: numer miesiąca + kapitał w kuli
+      ctx.font = '600 8.5px ' + FONT;
+      ctx.fillStyle = 'rgba(255,255,255,.55)';
+      ctx.fillText('MIESIĄC ' + st.month, x + 12, y + 13);
+      ctx.textAlign = 'right';
+      ctx.font = '700 ' + (compact ? 11.5 : 13) + 'px ' + FONT;
+      ctx.fillStyle = '#5fe3c0';
+      ctx.fillText(Fmt.pln(st.capital), x + w - 12, y + 15);
+      ctx.textAlign = 'left';
+
+      // dwa bloki: przepływ miesięczny (górą) i stan kapitału (dołem)
+      const rows = [
+        { i: 0, color: '#5fe3c0', kind: 'solid', label: 'wkład',
+          value: '+' + Fmt.pln(st.flowIn), pct: '' },
+        { i: 1, color: '#f6c463', kind: 'ring', label: 'odsetki',
+          value: '+' + Fmt.pln(st.flowOut), pct: '' },
+        { i: 2, color: '#5fe3c0', kind: 'solid', label: 'z wkładów',
+          value: Fmt.pln(st.coreValue), pct: pcCore },
+        { i: 3, color: '#f6c463', kind: 'ring', label: 'z odsetek',
+          value: Fmt.pln(st.outerValue), pct: pcOuter }
+      ];
+      for (const row of rows) {
+        // na telefonie: dwie kolumny (wkład | odsetki, z wkładów | z odsetek),
+        // etykieta nad wartością; na desktopie: cztery wiersze pod sobą
+        const col = compact ? (row.i % 2) : 0;
+        const rx = x + colX[col];
+        const ry = y + rowY[row.i];
+
+        // --- etykieta (na desktopie z procentem, na telefonie bez) ---
+        let lab = row.label;
+        let labFs = compact ? 8.5 : 10.5;
+        ctx.font = '600 ' + labFs + 'px ' + FONT;
+        if (compact) {
+          const room = (L.colX[1] - 13) - 14;
+          while (labFs > 6.5 && ctx.measureText(lab).width > room) {
+            labFs -= 0.5;
+            ctx.font = '600 ' + labFs + 'px ' + FONT;
+          }
+        } else if (row.pct !== '' && total > 0) {
+          lab = row.label + ' ' + row.pct + ' %';
+        }
+        let labW = ctx.measureText(lab).width;
+
+        // --- wartość: kurczy się, żeby nigdy nie wejść na etykietę ---
+        let val = row.value;
+        let valFs = compact ? 10.5 : 11.5;
+        ctx.font = '700 ' + valFs + 'px ' + FONT;
+        let valW = ctx.measureText(val).width;
+        let room;
+        // token z procentem (telefon) — liczymy go z góry, by wiedzieć,
+        // ile miejsca zostaje na kwotę
+        let pctTxt = (compact && row.pct !== '' && total > 0) ? row.pct + ' %' : '';
+        let pctW = 0;
+        if (pctTxt) {
+          ctx.font = '600 8.5px ' + FONT;
+          pctW = ctx.measureText(pctTxt).width + 3;
+        }
+        if (compact) {
+          room = (colX[1] - 13) - 2;
+          const roomVal = room - pctW;
+          while (valFs > 9 && valW > roomVal) {
+            valFs -= 0.5;
+            ctx.font = '700 ' + valFs + 'px ' + FONT;
+            valW = ctx.measureText(val).width;
+          }
+          if (valW > roomVal) { pctTxt = ''; pctW = 0; }   // kwota sama — bez procentu
+        } else {
+          room = (x + w - 12) - (rx + 12 + labW) - 8;
+          while (valFs > 9 && valW > room) {
+            valFs -= 0.5;
+            ctx.font = '700 ' + valFs + 'px ' + FONT;
+            valW = ctx.measureText(val).width;
+          }
+          if (valW > room && row.pct !== '') {
+            // etykieta z procentem nie mieści się — procent przenosimy do wartości
+            lab = row.label;
+            ctx.font = '600 ' + labFs + 'px ' + FONT;
+            labW = ctx.measureText(lab).width;
+            val = row.value + ' (' + row.pct + ' %)';
+            ctx.font = '700 ' + valFs + 'px ' + FONT;
+            valW = ctx.measureText(val).width;
+            room = (x + w - 12) - (rx + 12 + labW) - 8;
+            while (valFs > 8.5 && valW > room) {
+              valFs -= 0.5;
+              ctx.font = '700 ' + valFs + 'px ' + FONT;
+              valW = ctx.measureText(val).width;
+            }
+          }
+        }
+
+        // --- rysowanie: znacznik, etykieta, wartość ---
+        ctx.beginPath();
+        ctx.arc(rx + 4, ry, compact ? 4 : 4.4, 0, TAU);
+        if (row.kind === 'solid') {
+          ctx.fillStyle = row.color;
+          ctx.fill();
+        } else {
+          ctx.strokeStyle = row.color;
+          ctx.lineWidth = 1.8;
+          ctx.stroke();
+        }
+        ctx.font = '600 ' + labFs + 'px ' + FONT;
+        ctx.fillStyle = 'rgba(233,238,252,.92)';
+        ctx.fillText(lab, rx + 12, ry);
+
+        ctx.fillStyle = row.color;
+        ctx.font = '700 ' + valFs + 'px ' + FONT;
+        if (compact) {
+          ctx.textAlign = 'left';
+          ctx.fillText(val, rx, y + valY[row.i]);
+          // procent jako osobny, mniejszy token przy kwocie (telefon)
+          if (pctTxt) {
+            ctx.font = '600 8.5px ' + FONT;
+            ctx.fillStyle = 'rgba(233,238,252,.72)';
+            ctx.fillText(pctTxt, rx + valW + 3, y + valY[row.i]);
+            valW += pctW;
+          }
+          // kreska pod wartością wierszy „z wkładów” / „z odsetek”:
+          // kolorowe powiązanie wiersza z linią prowadzącą
+          if (row.i >= 2) {
+            ctx.beginPath();
+            ctx.moveTo(rx, y + valY[row.i] + 7);
+            ctx.lineTo(rx + valW, y + valY[row.i] + 7);
+            ctx.strokeStyle = row.color;
+            ctx.globalAlpha = 0.55;
+            ctx.lineWidth = 1.4;
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+          }
+        } else {
+          ctx.textAlign = 'right';
+          ctx.fillText(val, x + w - 12, ry);
+          ctx.textAlign = 'left';
+          // kreska pod wartością wierszy „z wkładów” / „z odsetek”:
+          // kolorowe powiązanie wiersza z linią prowadzącą do kuli
+          if (row.i >= 2) {
+            ctx.beginPath();
+            ctx.moveTo(x + w - 12 - valW, ry + 7);
+            ctx.lineTo(x + w - 12, ry + 7);
+            ctx.strokeStyle = row.color;
+            ctx.globalAlpha = 0.55;
+            ctx.lineWidth = 1.4;
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+          }
+        }
+      }
+      // separator między przepływem a stanem
+      ctx.beginPath();
+      ctx.moveTo(x + 12, y + (compact ? 47 : 61));
+      ctx.lineTo(x + w - 12, y + (compact ? 51 : 61));
+      ctx.strokeStyle = 'rgba(255,255,255,.13)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    /** Nakłada gotowy panel heatmapy na scenę. */
+    function roundRect(c, x, y, w, h, r) {
+      c.beginPath();
+      c.moveTo(x + r, y);
+      c.lineTo(x + w - r, y);
+      c.quadraticCurveTo(x + w, y, x + w, y + r);
+      c.lineTo(x + w, y + h - r);
+      c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      c.lineTo(x + r, y + h);
+      c.quadraticCurveTo(x, y + h, x, y + h - r);
+      c.lineTo(x, y + r);
+      c.quadraticCurveTo(x, y, x + r, y);
+      c.closePath();
+    }
+
+    /* ------------------------------------------------------------------ efekty --- */
+    function updateEffects(dt) {
+      for (let i = st.effects.length - 1; i >= 0; i--) {
+        const e = st.effects[i];
+        e.t += dt;
+        const p = Math.min(1, e.t / e.dur);
+        const ease = 1 - Math.pow(1 - p, 3);
+        e.x = e.x0 + (e.x1 - e.x0) * ease;
+        e.y = e.y0 + (e.y1 - e.y0) * ease - (e.kind === 'dot' ? Math.sin(Math.PI * ease) * e.arc : 0);
+        e.a = e.a0 + (e.a1 - e.a0) * ease;
+        if (p >= 1) st.effects.splice(i, 1);
+      }
+    }
+
+    function drawEffects() {
+      for (let i = 0; i < st.effects.length; i++) {
+        const e = st.effects[i];
+        const fade = 1 - Math.pow(Math.min(1, e.t / e.dur), 2);
+        if (e.kind === 'dot') {
+          // kręcąca się „moneta” — spłaszczenie w pionie imituje obrót
+          const spin = Math.abs(Math.cos(e.a)) * 0.75 + 0.25;
+          ctx.save();
+          ctx.globalAlpha = Math.min(1, fade * 1.8);
+          // poświata
+          const gg = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, e.size * 2.1);
+          gg.addColorStop(0, e.color);
+          gg.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.globalAlpha = Math.min(0.45, fade);
+          ctx.fillStyle = gg;
+          ctx.beginPath();
+          ctx.arc(e.x, e.y, e.size * 2.1, 0, TAU);
+          ctx.fill();
+          ctx.globalAlpha = Math.min(1, fade * 1.8);
+          ctx.beginPath();
+          ctx.ellipse(e.x, e.y, e.size * spin, e.size, 0, 0, TAU);
+          ctx.fillStyle = e.color;
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(255,255,255,.7)';
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+          // wartość nominału wypisana na kropce (jeśli jest dość duża)
+          if (e.value && e.size * spin > 9) {
+            ctx.save();
+            ctx.globalAlpha = Math.min(1, fade * 1.8);
+            ctx.fillStyle = 'rgba(10,14,30,.82)';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '700 ' + Math.max(7, e.size * 0.52).toFixed(1) + 'px ' + FONT;
+            ctx.fillText(String(e.value), e.x, e.y + 0.5);
+            ctx.restore();
+          }
+
+          ctx.restore();
+        } else if (e.kind === 'ring') {
+          ctx.save();
+          ctx.globalAlpha = fade * 0.9;
+          ctx.beginPath();
+          ctx.arc(e.x, e.y, e.size * (1.4 - fade * 0.4), 0, TAU);
+          ctx.strokeStyle = e.color;
+          ctx.lineWidth = Math.max(1.5, 3 * unit * fade);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+    }
+
+    return api;
+  })();
+
+  /* ===================================================================================
+     4) KONTROLER — formularz, oś czasu, odtwarzanie, pętla rAF
+     =================================================================================== */
+  const App = (() => {
+    const TICK_MS = 2400;  // czas jednego „tyku” przy prędkości 1× (1 miesiąc = 2,4 s)
+    const FF_STEP = 10;    // ile miesięcy na tyk przy przewijaniu / cofaniu
+
+    const el = {
+      contribution: document.getElementById('contribution'),
+      capital0: document.getElementById('capital0'),
+      annualPct: document.getElementById('annualPct'),
+      annualRange: document.getElementById('annualRange'),
+      target: document.getElementById('target'),
+      errContribution: document.getElementById('errContribution'),
+      errCapital0: document.getElementById('errCapital0'),
+      errAnnual: document.getElementById('errAnnual'),
+      errTarget: document.getElementById('errTarget'),
+      validation: document.getElementById('validation'),
+      horizonYears: document.getElementById('horizonYears'),
+      errHorizon: document.getElementById('errHorizon'),
+      startDateInput: document.getElementById('startDateInput'),
+      chipStart: document.getElementById('chipStart'),
+      // v14u: wiek użytkownika (liczony z daty urodzenia)
+      birthDate: document.getElementById('birthDate'),
+      chipAge: document.getElementById('chipAge'),
+      errAge: document.getElementById('errAge'),
+      // pasek ustawień nad wizualizacją
+      settingsCard: document.getElementById('settingsCard'),
+      // okienko parametrów NA wizualizacji (skrót do tego samego paska)
+      sceneParams: document.getElementById('sceneParams'),
+      spToggle: document.getElementById('spToggle'),
+      spBody: document.getElementById('spBody'),
+      spFlag: document.getElementById('spFlag'),
+      spContribution: document.getElementById('spContribution'),
+      spDeposit: document.getElementById('spDeposit'),   // jednorazowa dopłata (działa tu i teraz)
+      spAnnual: document.getElementById('spAnnual'),
+      settingsNote: document.getElementById('settingsNote'),
+      // statystyki
+      statContributed: document.getElementById('statContributed'),
+      statReturns: document.getElementById('statReturns'),
+      statCapital: document.getElementById('statCapital'),
+      statMonthly: document.getElementById('statMonthly'),
+      goalTarget: document.getElementById('goalTarget'),
+      goalBadge: document.getElementById('goalBadge'),
+      goalBar: document.getElementById('goalBar'),
+      goalText: document.getElementById('goalText'),
+      brandSub: document.getElementById('brandSub'),
+      lessonList: document.getElementById('lessonList'),
+      // scena / HUD
+      stageDate: document.getElementById('stageDate'),
+      stageSub: document.getElementById('stageSub'),
+      hudCapital: document.getElementById('hudCapital'),
+      hudFlowIn: document.getElementById('hudFlowIn'),
+      hudFlowOut: document.getElementById('hudFlowOut'),
+      hudMonth: document.getElementById('hudMonth'),
+      // oś czasu
+      timeline: document.getElementById('timeline'),
+      tlHint: document.getElementById('tlHint'),
+      tlDate: document.getElementById('tlDate'),
+      tlMonth: document.getElementById('tlMonth'),
+      tlYears: document.getElementById('tlYears'),
+      tlHorizon: document.getElementById('tlHorizon'),
+      tlStart: document.getElementById('tlStart'),
+      tlEnd: document.getElementById('tlEnd'),
+      // przyciski
+      playBtn: document.getElementById('playBtn'),
+      stopBtn: document.getElementById('stopBtn'),
+      ffBtn: document.getElementById('ffBtn'),
+      rewindBtn: document.getElementById('rewindBtn'),
+      prevBtn: document.getElementById('prevBtn'),
+      nextBtn: document.getElementById('nextBtn'),
+      speedReadout: document.getElementById('speedReadout'),
+      speed: document.getElementById('speed'),
+      speedValue: document.getElementById('speedValue'),
+      chart: document.getElementById('chart'),
+      scene: document.getElementById('scene'),     // v15: podpowiedzi na scenie
+      tip: document.getElementById('tip')          // v15: podpowiedzi na wykresie i na scenie
+    };
+
+    const state = {
+      params: { contribution: 500, capital0: 0, annualPct: 7, target: 1000 }, // wartości ZASTOSOWANE
+      user: { age: 18, ageExact: 18, birth: '' },  // wiek użytkownika (z daty urodzenia) — dydaktyka
+      horizonYears: 50,      // horyzont inwestycyjny (lata)
+      horizonMonths: 600,    // horyzont w miesiącach
+      scrubbing: false,      // czy właśnie przeciągamy oś czasu (blokada „skakania” strony)
+      phases: [{ from: 0, contribution: 500, annualPct: 7, deposit: 0 }],      // fazy symulacji (od kiedy co obowiązuje)
+      appliedCapital0: 0,     // ile kapitału startowego realnie włożone (start + dopłaty w trakcie)
+      pending: null,          // oczekujące zmiany (jeszcze NIE zastosowane)
+      model: null,
+      targetMonth: null,
+      cumBreakMonth: null,     // przełom skumulowany (odsetki > wszystkie wpłaty)
+      events: [],               // v15: zmiany parametrów bieżących (znaczniki na wykresie)
+      month: 0,
+      mode: 'idle', // 'idle' | 'play' | 'ff' | 'rewind'
+      speed: 3,
+      acc: 0
+    };
+
+    /* --------------------------------------------------------- walidacja wejść --- */
+    function readNumber(input) {
+      const raw = String(input.value).trim();
+      if (raw === '') return { ok: false, value: NaN, msg: 'Pole jest puste — podaj liczbę.' };
+      const v = Number(raw);
+      if (!isFinite(v)) return { ok: false, value: NaN, msg: 'Wartość musi być liczbą.' };
+      return { ok: true, value: v, msg: '' };
+    }
+
+    /**
+     * Jednorazowa dopłata z okienka „Parametry bieżące” na scenie.
+     * Puste pole = brak dopłaty (0). Błędna wartość blokuje zatwierdzenie zmian.
+     */
+    function readDeposit() {
+      const input = el.spDeposit;
+      if (!input) return { ok: true, value: 0, msg: '' };
+      const raw = String(input.value).trim();
+      if (raw === '') return { ok: true, value: 0, msg: '' };
+      const v = Number(raw);
+      if (!isFinite(v) || v < 0) return { ok: false, value: 0, msg: 'Dopłata musi być liczbą ≥ 0 zł.' };
+      return { ok: true, value: v, msg: '' };
+    }
+
+    function validate() {
+      const errors = [];
+      const c = readNumber(el.contribution);
+      const k = readNumber(el.capital0);
+      const a = readNumber(el.annualPct);
+      const t = readNumber(el.target);
+      const dep = readDeposit();        // dopłata z okienka na scenie (puste = 0)
+
+      setFieldError(el.contribution, el.errContribution, c.ok && c.value >= 0 ? '' : (c.msg || 'Wkład nie może być ujemny.'));
+      if (!(c.ok && c.value >= 0)) errors.push('Miesięczna wpłata musi być liczbą ≥ 0 zł.');
+
+      setFieldError(el.capital0, el.errCapital0, k.ok && k.value >= 0 ? '' : (k.msg || 'Kapitał początkowy nie może być ujemny.'));
+      if (!(k.ok && k.value >= 0)) errors.push('Początkowy kapitał musi być liczbą ≥ 0 zł.');
+
+      // v14v: ręczne wpisywanie stopy nie ma górnego limitu (suwak pokazuje 0–30 %)
+      const aBad = !(a.ok && a.value >= 0);
+      setFieldError(el.annualPct, el.errAnnual, aBad ? (a.msg || 'Stopa nie może być ujemna.') : '');
+      if (aBad) errors.push('Roczna stopa zwrotu musi być liczbą ≥ 0.');
+
+      const tBad = !(t.ok && t.value >= 0);
+      setFieldError(el.target, el.errTarget, tBad ? (t.msg || 'Cel musi być liczbą ≥ 0 zł.') : '');
+      if (tBad) errors.push('Cel miesięcznego dochodu musi być liczbą ≥ 0 zł.');
+
+      // horyzont inwestycyjny (lata)
+      const h = readNumber(el.horizonYears);
+      const hBad = !(h.ok && h.value >= 1 && h.value <= 100);
+      setFieldError(el.horizonYears, el.errHorizon, hBad ? (h.msg || 'Horyzont czasowy inwestycji musi mieścić się w zakresie 1–100 lat.') : '');
+      if (hBad) errors.push('Horyzont czasowy inwestycji musi mieścić się w zakresie 1–100 lat.');
+
+      if (!dep.ok) errors.push(dep.msg || 'Dopłata musi być liczbą ≥ 0 zł.');
+
+      // ten sam stan błędu pokazujemy w okienku parametrów na scenie
+      if (el.spContribution) el.spContribution.classList.toggle('invalid', !(c.ok && c.value >= 0));
+      if (el.spAnnual) el.spAnnual.classList.toggle('invalid', aBad);
+      if (el.spDeposit) el.spDeposit.classList.toggle('invalid', !dep.ok);
+
+      return { ok: errors.length === 0, errors: errors, c: c, k: k, a: a, t: t, h: h, dep: dep };
+    }
+
+    function setFieldError(input, errEl, msg) {
+      if (msg) {
+        input.classList.add('invalid');
+        errEl.textContent = msg;
+        errEl.hidden = false;
+      } else {
+        input.classList.remove('invalid');
+        errEl.textContent = '';
+        errEl.hidden = true;
+      }
+    }
+
+    /**
+     * Komunikat walidacji. Przy błędach zostawiamy widoczny komunikat,
+     * przy poprawnych danych NIE zajmujemy miejsca (potwierdzeniem jest
+     * sam efekt zmiany na kuli).
+     */
+    function showValidation(errors, okMsg) {
+      if (errors.length) {
+        el.validation.textContent = 'Popraw dane: ' + errors.join(' ');
+        el.validation.classList.add('show');
+        el.validation.classList.remove('ok');
+      } else {
+        el.validation.textContent = '';
+        el.validation.classList.remove('show', 'ok');
+      }
+    }
+
+    /* ------------------------------------------------------- przebudowa modelu --- */
+    /**
+     * Faza, która obowiązuje w danym miesiącu (fazy = przedziały z własnymi
+     * parametrami; powstają, gdy użytkownik zmieni ustawienia w trakcie symulacji).
+     */
+    function currentPhase() {
+      let ph = state.phases[0];
+      for (const p of state.phases) if (p.from <= state.month) ph = p;
+      return ph;
+    }
+
+    /** Horyzont symulacji w miesiącach (ustawienie „Horyzont” w pasku). */
+    function H() {
+      return state.horizonMonths || H();
+    }
+
+    /** Parametry „na ekranie” dla bieżącego miesiąca (zależne od fazy). */
+    function viewParams() {
+      const ph = currentPhase();
+      return {
+        contribution: ph.contribution,
+        annualPct: ph.annualPct,
+        capital0: state.params.capital0,
+        target: state.params.target
+      };
+    }
+
+    /** Buduje model z listy faz (pierwsza faza od zera, kolejne kontynuują serię). */
+    function buildModelFromPhases(phases) {
+      const p0 = phases[0];
+      let model = Simulation.buildSeries({
+        contribution: p0.contribution, annualPct: p0.annualPct, capital0: p0.deposit
+      });
+      for (let i = 1; i < phases.length; i++) {
+        const ph = phases[i];
+        model = Simulation.continueSeries(model.series, ph.from, {
+          contribution: ph.contribution, annualPct: ph.annualPct, deposit: ph.deposit
+        });
+      }
+      return model;
+    }
+
+    /** Co ile lat stawiamy kamienie milowe wieku (i podziałkę na dole sceny). */
+    function milestoneStep() {
+      const y = state.horizonYears || 50;
+      // długi horyzont: co 10 lat (20, 30, 40…); krótki: co 5 lat albo rzadziej
+      return y >= 30 ? 10 : y >= 16 ? 5 : y >= 8 ? 2 : 1;
+    }
+
+    /**
+     * Kamienie milowe WIEKU: następne „równe” lata (20, 30, 40…) w horyzoncie
+     * inwestycyjnym. Przy krótkim horyzoncie robimy kroki co 5 lat albo mniej.
+     */
+    function ageMilestones() {
+      const age = state.user.ageExact != null ? state.user.ageExact : (state.user.age || 0);
+      const step = milestoneStep();
+      const out = [];
+      const limit = age + (state.horizonYears || 50);
+      for (let a = Math.ceil((age + 1e-6) / step) * step; a <= limit + 1e-6; a += step) {
+        const m = Math.round((a - age) * 12);
+        if (m > 0 && m <= H()) {
+          out.push({ age: a, years: Math.round(a), month: m, t: pathProgress(m),
+                     capital: state.model ? state.model.series[m].balance : 0 });
+        }
+      }
+      return out;
+    }
+
+    /**
+     * Wpłata miesięczna obowiązująca w danym miesiącu (z faz).
+     * Potrzebna m.in. do wykresu: przełom „odsetki > wpłaty” trzeba porównywać
+     * z tą wpłatą, która w danym miesiącu faktycznie obowiązywała.
+     */
+    function contributionAtMonth(m) {
+      let ph = state.phases[0];
+      for (let i = 0; i < state.phases.length; i++) {
+        if (state.phases[i].from <= m) ph = state.phases[i]; else break;
+      }
+      return ph ? ph.contribution : 0;
+    }
+
+    /** „Ładne” podziałki osi: 1, 2, 2,5, 5 lub 10 × 10^k. */
+    function niceStep(max, target) {
+      const raw = Math.max(1e-9, max / Math.max(1, target));
+      const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+      const n = raw / mag;
+      const mult = n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10;
+      return mult * mag;
+    }
+
+    /**
+     * „Zapamiętywana” wysokość elementu: rośnie, ale nigdy nie maleje.
+     * Dzięki temu podsumowanie ma zawsze tę samą wysokość, a przewijana
+     * strona nie skacze, gdy w treści pojawią się dłuższe liczby.
+     */
+    function keepHeight(el) {
+      if (!el) return;
+      const h = el.getBoundingClientRect().height;
+      const cur = parseFloat(el.style.minHeight || '0') || 0;
+      if (h > cur + 1) el.style.minHeight = Math.ceil(h) + 'px';
+    }
+
+    /** Przelicza wszystko, co zależy od modelu (serie, wykres, kamienie milowe wieku). */
+    function rebuildFromPhases() {
+      state.model = buildModelFromPhases(state.phases);
+      const vp = viewParams();
+      // Przełom A — miesiąc, w którym odsetki zaczynają przewyższać miesięczne
+      // wpłaty. v14x: porównujemy z wpłatą OBIOWIĄZĄCĄ w danym miesiącu (a nie
+      // z bieżącą) — dzięki temu znacznik zgadza się z krzywą także wtedy,
+      // gdy użytkownik zmienił wpłatę w trakcie symulacji.
+      state.breakMonth = null;
+      for (let m = 1; m <= H(); m++) {
+        if (state.model.series[m].monthlyReturn > contributionAtMonth(m)) { state.breakMonth = m; break; }
+      }
+      // Przełom B — miesiąc, w którym SKUMULOWANE odsetki przewyższają wszystkie
+      // wpłaty (to jest moment widoczny na wykresie: złoty pas szerszy
+      // niż zielone pole).
+      state.cumBreakMonth = null;
+      for (let m = 1; m <= H(); m++) {
+        const s = state.model.series[m];
+        if (s.returns > s.invested) { state.cumBreakMonth = m; break; }
+      }
+
+      // v15: ZDARZENIA — zmiany parametrów bieżących. Każda faza po pierwszej
+      // oznacza zmianę (nowa wpłata / nowa stopa / dopłata). Zdarzenia trafiają
+      // na wykres jako zielone znaczniki, a po najechaniu kursorem pokazujemy,
+      // co dokładnie się wtedy zmieniło.
+      state.events = [];
+      for (let i = 1; i < state.phases.length; i++) {
+        const ph = state.phases[i], prev = state.phases[i - 1];
+        const bits = [];
+        if (ph.contribution !== prev.contribution) bits.push('wpłata ' + Fmt.pln(ph.contribution) + '/mies.');
+        if (ph.annualPct !== prev.annualPct) bits.push('stopa ' + ph.annualPct + ' %');
+        if ((ph.deposit || 0) > 0) bits.push('dopłata ' + Fmt.pln(ph.deposit) + ' zł');
+        if (!bits.length) continue;
+        state.events.push({
+          month: ph.from,
+          title: 'Zmiana parametrów',
+          text: 'Miesiąc <b>' + ph.from + '</b> (' + Dates.mmYyyy(ph.from) + ') — ' + bits.join(' · ') + '.'
+        });
+      }
+      // wariant „a gdybyś odkładał dwa razy więcej” (do panelu dydaktycznego)
+      state.altSeries = null;
+      if (vp.contribution > 0) {
+        const alt = state.phases.map(function (ph) {
+          return { from: ph.from, contribution: ph.contribution * 2, annualPct: ph.annualPct, deposit: ph.deposit };
+        });
+        state.altSeries = buildModelFromPhases(alt).series;
+      }
+      state.targetMonth = Simulation.findTargetMonth(state.model.series, vp.target);
+      // kamienie milowe WIEKU użytkownika (20, 30, 40…) — nie etapy horyzontu
+      state.rulerStep = milestoneStep();
+      state.milestones = ageMilestones();
+    }
+
+    /** Przebudowa całej symulacji od zera (reset, pierwsze uruchomienie). */
+    function rebuildModel(keepMonth) {
+      const v = validate();
+      showValidation(v.errors, 'Dane poprawne — symulacja przeliczona.');
+      if (!v.ok) return; // nie przebudowujemy modelu przy błędnych danych
+
+      state.pending = null;
+      state.params = { contribution: v.c.value, capital0: v.k.value, annualPct: v.a.value, target: v.t.value };
+      state.phases = [{ from: 0, contribution: v.c.value, annualPct: v.a.value, deposit: v.k.value }];
+      state.appliedCapital0 = v.k.value;
+      rebuildFromPhases();
+      if (!keepMonth) state.month = 0;
+      updatePendingUI();
+      refreshAll();
+    }
+
+    /**
+     * Okienko „Parametry bieżące” ← parametry OBOWIĄZUJĄCE w danym miesiącu
+     * (albo oczekująca zmiana, jeśli użytkownik coś wpisał).
+     * UWAGA: okienko i pasek „Ustawienia początkowe” są NIEZALEŻNE —
+     * tutaj nic nie zapisujemy do paska. „Dopłać” to jednorazowa kwota
+     * wpisywana wprost w okienku, więc nigdy jej nie nadpisujemy.
+     */
+    function panelFromView() {
+      const set = function (a, b) {
+        if (!a || a === document.activeElement) return;   // nie przestawiamy kursora w trakcie pisania
+        if (a.value !== b) a.value = b;
+      };
+      const p = state.pending;
+      if (p) {
+        set(el.spContribution, String(p.contribution));
+        set(el.spAnnual, String(p.annualPct));
+      } else {
+        const vp = viewParams();
+        set(el.spContribution, String(vp.contribution));
+        set(el.spAnnual, String(vp.annualPct));
+      }
+    }
+
+    /**
+     * Zmiana w oknie „Parametry bieżące”: czeka na zatwierdzenie
+     * (▶ Symulacja / ▶ Wznój) i NIE rusza ustawień początkowych.
+     */
+    function stagePanelParams() {
+      const c = readNumber(el.spContribution);
+      const a = readNumber(el.spAnnual);
+      const dep = readDeposit();
+      if (el.spContribution) el.spContribution.classList.toggle('invalid', !(c.ok && c.value >= 0));
+      if (el.spAnnual) el.spAnnual.classList.toggle('invalid', !(a.ok && a.value >= 0));
+      if (el.spDeposit) el.spDeposit.classList.toggle('invalid', !dep.ok);
+
+      const cur = currentPhase();
+      const cc = c.ok ? c.value : cur.contribution;
+      const aa = a.ok ? a.value : cur.annualPct;
+      const dd = dep.ok ? Math.max(0, dep.value) : 0;
+      const changed = (cc !== cur.contribution) || (aa !== cur.annualPct) || (dd > 0);
+      state.pending = changed ? { contribution: cc, annualPct: aa, deposit: dd } : null;
+      updatePendingUI();
+    }
+
+    /* --- v14t: tryb „podglądania” okienka parametrów -------------------------- */
+    let scrubMode = false;
+
+    /**
+     * W trakcie przeciągania osi czasu okienko „Parametry bieżące” zamienia się
+     * w PODGLĄD: pokazuje parametry faktycznie obowiązujące w danym miesiącu,
+     * a pole „Dopłać” znika (dopłaty nie da się wykonać w trakcie przewijania).
+     */
+    function setScrubMode(on) {
+      if (scrubMode === on) return;
+      scrubMode = on;
+      if (el.sceneParams) el.sceneParams.classList.toggle('scrub', on);
+      if (on) {
+        refreshScrubFields();
+      } else {
+        panelFromView();   // wracamy do wartości oczekujących (z paska ustawień)
+      }
+      syncPanelRect();
+    }
+
+    /**
+     * Pola okienka w trybie podglądu = parametry fazy obowiązującej teraz.
+     * v14u: jeśli użytkownik wpisał już zmianę (oczekującą) — NIE nadpisujemy
+     * jego pól; wartości wprowadzone muszą zostać zgodne z przeciąganiem osi.
+     */
+    function refreshScrubFields() {
+      if (!scrubMode) return;
+      if (state.pending) return;      // zostawiamy to, co wpisał użytkownik
+      const vp = viewParams();
+      if (el.spContribution) el.spContribution.value = String(vp.contribution);
+      if (el.spAnnual) el.spAnnual.value = String(vp.annualPct);
+    }
+
+    /** Scenę warto powiadomić, gdzie leży okienko, by nie zasłaniało kuli. */
+    function syncPanelRect() {
+      const wrap = document.querySelector('.canvas-wrap');
+      if (!wrap || !el.sceneParams) return;
+      const wr = wrap.getBoundingClientRect();
+      const pr = el.sceneParams.getBoundingClientRect();
+      Scene.setPanelRect({ x: pr.left - wr.left, y: pr.top - wr.top, w: pr.width, h: pr.height });
+    }
+
+    /**
+     * USTAWIENIA POCZĄTKOWE (pasek nad wizualizacją) definiują symulację od
+     * miesiąca 0, więc działają OD RAZU — od razu widać je w „okienku” nad
+     * wizualizacją (kapitał i wpłata/miesiąc), jeszcze przed uruchomieniem
+     * symulacji. Faza 0 jest nadpisywana; późniejsze fazy (z Parametrów
+     * bieżących) zostają bez zmian.
+     */
+    function applyStripSettings() {
+      const v = validate();
+      showValidation(v.errors, 'Dane poprawne — ustawienia początkowe wczytane.');
+      if (!v.ok) return false;
+
+      // horyzont inwestycyjny (zmienia długość serii)
+      if (v.h.ok && v.h.value !== state.horizonYears) {
+        state.horizonYears = v.h.value;
+        state.horizonMonths = v.h.value * 12;
+        el.timeline.max = String(state.horizonMonths);
+        el.tlEnd.textContent = Dates.ddMmYyyy(state.horizonMonths);
+      }
+
+      state.params.contribution = v.c.value;
+      state.params.capital0 = v.k.value;
+      state.params.annualPct = v.a.value;
+      state.params.target = v.t.value;
+      state.phases[0] = { from: 0, contribution: v.c.value, annualPct: v.a.value, deposit: v.k.value };
+      state.appliedCapital0 = v.k.value;
+      rebuildFromPhases();
+      if (state.month > state.horizonMonths) setMonth(state.horizonMonths, { silent: true });
+      refreshAll();
+      return true;
+    }
+
+    /**
+     * Zmiana ustawień w trakcie symulacji: NIE przebudowujemy modelu.
+     * Nowe wartości czekają, aż użytkownik naciśnie „▶ Symulacja” (od teraz).
+     */
+    function stageParams() {
+      // v14u: ustawienia początkowe działają od razu → przebudowa modelu od fazy 0
+      applyStripSettings();
+    }
+
+    /**
+     * Stan oczekujących zmian. v14v: zrezygnowaliśmy z monitu „Czeka: …” w pasku
+     * ustawień — zostaje jedynie subtelna flaszka „● czeka” w okienku na scenie
+     * (i złota ramka tego okienka).
+     */
+    function updatePendingUI() {
+      const p = state.pending;
+      if (el.sceneParams) {
+        el.sceneParams.classList.toggle('pending', !!p);
+        if (el.spFlag) el.spFlag.hidden = !p;
+      }
+      syncPanelRect();   // okienko mogło zmienić wysokość (flaszka „● czeka”)
+    }
+
+    /**
+     * Zatwierdzenie zmian z okienka „Parametry bieżące” + wznowienie symulacji.
+     * Używane przez Enter / spację w polach okienka — efekt jak po kliknięciu
+     * przycisku „▶ Wznój” (stosuje oczekujące zmiany od teraz i jedzie dalej).
+     */
+    function commitPanelChanges() {
+      if (state.month >= H()) setMonth(0, { silent: true });
+      if (state.pending) applyPendingFromNow();
+      setMode('play');
+    }
+
+    /**
+     * Stosuje oczekujące zmiany „od teraz”:
+     *  • jednorazowa DOPŁATA (i różnica kapitału startowego) wskakuje do kuli
+     *    właśnie w tym miejscu osi czasu — czyli w bieżącym miesiącu,
+     *  • nowa wpłata i nowa stopa obowiązują od następnego miesiąca,
+     *  • miesiące do teraz zostają nietknięte (historia kuli się nie zmienia).
+     */
+    function applyPendingFromNow() {
+      const p = state.pending;
+      if (!p) return false;
+      const M = state.month;
+      if (M >= H()) {
+        showValidation([], 'To już koniec symulacji — użyj przycisku Stop albo przeciągnij suwak ' +
+          'na początek osi czasu, aby wrócić do ustawień domyślnych.');
+        return false;
+      }
+      const cur = currentPhase();
+      const D = Math.max(0, p.deposit || 0);   // jednorazowa dopłata z okienka na scenie
+
+      if (M === 0) {
+        // jesteśmy na starcie — wszystko jest kapitałem początkowym
+        const carried = state.phases.slice(1).reduce(function (s, ph) { return s + (ph.deposit || 0); }, 0);
+        state.phases = [{ from: 0, contribution: p.contribution, annualPct: p.annualPct, deposit: state.params.capital0 + D + carried }];
+      } else {
+        // przyszłe fazy są kasowane, a ich jednorazowe wpłaty przenosimy na bieżący
+        // miesiąc — dzięki temu pieniądze nie znikają z kuli.
+        const carried = state.phases.filter(function (ph) { return ph.from >= M; })
+          .reduce(function (s, ph) { return s + (ph.deposit || 0); }, 0);
+        const phases = state.phases.filter(function (ph) { return ph.from < M; });
+        // 1) dopłata trafia do kuli TERAZ (bieżący miesiąc, stare parametry)
+        phases.push({ from: M, contribution: cur.contribution, annualPct: cur.annualPct, deposit: carried + D });
+        // 2) od następnego miesiąca obowiązują nowe parametry
+        phases.push({ from: M + 1, contribution: p.contribution, annualPct: p.annualPct, deposit: 0 });
+        state.phases = phases;
+      }
+      state.pending = null;
+      if (el.spDeposit) el.spDeposit.value = '0';   // dopłata jest jednorazowa
+      rebuildFromPhases();
+      updatePendingUI();
+      refreshAll();
+      return true;
+    }
+
+    /* ------------------------------------------------------- wartości domyślne --- */
+    const DEFAULTS = {
+      contribution: 500,     // zł / miesiąc
+      capital0: 0,           // zł
+      annualPct: 7,          // % (rocznie)
+      target: 1000,          // zł / miesiąc
+      horizonYears: 50,      // lat
+      age: 18                // lat (domyślna data urodzenia = dziś − 18 lat)
+    };
+
+    /**
+     * Przywraca pasek „Ustawienia początkowe” do wartości DOMYŚLNYCH:
+     * wpłata 500 zł, kapitał 0 zł, stopa 7 %, cel 1000 zł, horyzont 50 lat,
+     * start = dziś, data urodzenia = dziś − 18 lat.
+     */
+    function resetStripToDefaults() {
+      el.contribution.value = String(DEFAULTS.contribution);
+      el.capital0.value = String(DEFAULTS.capital0);
+      el.annualPct.value = String(DEFAULTS.annualPct);
+      el.annualRange.value = String(DEFAULTS.annualPct);
+      el.target.value = String(DEFAULTS.target);
+      el.horizonYears.value = String(DEFAULTS.horizonYears);
+      // horyzont inwestycyjny (oś czasu)
+      state.horizonYears = DEFAULTS.horizonYears;
+      state.horizonMonths = DEFAULTS.horizonYears * 12;
+      el.timeline.max = String(state.horizonMonths);
+      el.tlEnd.textContent = Dates.ddMmYyyy(state.horizonMonths);
+      // data startu = dziś, data urodzenia = dziś − 18 lat
+      setStartDate(new Date(TODAY.getTime()));
+      setAgeFromBirth(isoDate(birthForAge(DEFAULTS.age)));
+      refreshAgeUI();
+    }
+
+    /**
+     * Zerowanie wizualizacji (przycisk „Stop” albo przeciągnięcie osi czasu
+     * na początek): przywraca USTAWIENIA POCZĄTKOWE do wartości domyślnych
+     * i przelicza model od miesiąca 0.
+     * Okienko „Parametry bieżące” zostaje nietknięte — jego wartości oraz
+     * ewentualna oczekująca dopłata pozostają takie, jakie były.
+     */
+    function zeroSimulation() {
+      resetStripToDefaults();
+      const v = validate();
+      showValidation(v.errors, 'Wizualizacja wyzerowana — ustawienia początkowe wróciły do wartości domyślnych.');
+      if (!v.ok) { setMode('idle'); setMonth(0, { silent: true }); return false; }
+      state.pending = null;
+      state.params = { contribution: v.c.value, capital0: v.k.value, annualPct: v.a.value, target: v.t.value };
+      state.phases = [{ from: 0, contribution: v.c.value, annualPct: v.a.value, deposit: v.k.value }];
+      state.appliedCapital0 = v.k.value;
+      rebuildFromPhases();
+      state.month = 0;
+      Scene.clearEffects();
+      updatePendingUI();
+      refreshAll();
+      setMode('idle');
+      stagePanelParams();   // dopłata z okienka „Parametry bieżące” zostaje oczekująca
+      return true;
+    }
+
+    /**
+     * Czy wizualizacja jest już wyzerowana? v14v: „wyzerowana” znaczy:
+     * miesiąc 0 ORAZ model policzony z wartości DOMYŚLNYCH ustawień początkowych.
+     */
+    function isZeroed() {
+      if (state.month !== 0 || state.phases.length !== 1) return false;
+      const ph = state.phases[0];
+      return ph.from === 0 &&
+        ph.contribution === DEFAULTS.contribution &&
+        ph.annualPct === DEFAULTS.annualPct &&
+        ph.deposit === DEFAULTS.capital0 &&
+        state.appliedCapital0 === DEFAULTS.capital0;
+    }
+
+    /** Data w formacie wejścia HTML (yyyy-mm-dd). */
+    function isoDate(d) {
+      const p = function (x) { return String(x).padStart(2, '0'); };
+      return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+    }
+
+    /** Parsowanie daty z wejścia HTML (yyyy-mm-dd) — bez przesunięcia strefy czasowej. */
+    function parseIsoDate(s) {
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || '');
+      if (!m) return null;
+      const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    /* ------------------------------------------------------ wiek użytkownika --- */
+    /** Wiek (lata, z ułamkiem) użytkownika w danym miesiącu symulacji. */
+    function ageAtMonth(month) {
+      return (state.user.ageExact != null ? state.user.ageExact : (state.user.age || 0)) + (month || 0) / 12;
+    }
+
+    /** Tekst „38 lat” albo „38,5 lat”. */
+    function fmtAge(years) {
+      const r = Math.round((years || 0) * 10) / 10;
+      if (Math.abs(r - Math.round(r)) < 0.05) return String(Math.round(r)) + ' lat';
+      return r.toFixed(1).replace('.', ',') + ' lat';
+    }
+
+    /** Wiek (w latach, z ułamkiem) liczony z daty urodzenia. */
+    /**
+     * Wiek w latach liczony KALENDARZOWO (a nie „365,2425 dnia na rok”):
+     * • w dniu urodzin → dokładnie 18,0 (a nie 17,9998),
+     * • między urodzinami → 18 + ułamek roku (np. 18,08 po miesiącu).
+     * Dzięki temu kamienie milowe wieku (20, 30, 40…) i chip „Wiek: 18 lat”
+     * zgadzają się z kalendarzem.
+     */
+    function ageFromBirth(iso) {
+      const d = parseIsoDate(iso);
+      if (!d) return null;
+      if (d.getTime() > TODAY.getTime()) return null;          // data z przyszłości
+      let years = TODAY.getFullYear() - d.getFullYear();
+      const monthNow = TODAY.getMonth(), dayNow = TODAY.getDate();
+      const beforeBirthday = (monthNow < d.getMonth()) ||
+        (monthNow === d.getMonth() && dayNow < d.getDate());
+      if (beforeBirthday) years -= 1;
+      if (years < 0 || years > 120) return null;
+      const last = new Date(d.getFullYear() + years, d.getMonth(), d.getDate());
+      const next = new Date(d.getFullYear() + years + 1, d.getMonth(), d.getDate());
+      const span = next.getTime() - last.getTime();
+      const frac = span > 0 ? (TODAY.getTime() - last.getTime()) / span : 0;
+      return years + Math.max(0, Math.min(1, frac));
+    }
+
+    /** Data urodzenia dla podanego wieku (dziś minus tyle lat). */
+    function birthForAge(years) {
+      return new Date(TODAY.getFullYear() - years, TODAY.getMonth(), TODAY.getDate());
+    }
+
+    /** Odświeżenie pola „Data urodzenia” (nie przeszkadzamy w pisaniu). */
+    function refreshAgeUI() {
+      if (el.birthDate && document.activeElement !== el.birthDate) el.birthDate.value = state.user.birth;
+    }
+
+    /** Ustawia wiek na podstawie daty urodzenia i przelicza kamienie milowe. */
+    function setAgeFromBirth(iso) {
+      const a = ageFromBirth(iso);
+      if (a === null) return false;
+      state.user.ageExact = a;
+      state.user.age = Math.floor(a);
+      state.user.birth = iso;
+      state.milestones = ageMilestones();     // „kamienie milowe” wieku zależą od wieku
+      return true;
+    }
+
+    /** Ustawia datę startu i odświeża wszystkie miejsca, które ją pokazują. */
+    function setStartDate(d) {
+      Dates.setStart(d);
+      el.startDateInput.value = isoDate(d);
+      el.chipStart.textContent = d.toLocaleDateString('pl-PL');
+      el.tlStart.textContent = Dates.ddMmYyyy(0);
+      el.tlEnd.textContent = Dates.ddMmYyyy(H());
+      refreshAll();
+    }
+
+    /* --------------------------------------------------------- odświeżenie UI --- */
+    function refreshAll() {
+      const s = state.model.series[state.month];
+      const p = viewParams();
+
+      // v14u: W TRAKCIE PRZECIĄGANIA OSI CZASU podsumowanie nie jest przebudowywane —
+      // zmiana wysokości tekstu powodowała „skakanie” strony. Odświeżamy je
+      // po zwolnieniu przycisku myszy.
+      if (!state.scrubbing) refreshSummary(s, p);
+      // v15: w trakcie przeciągania (oś czasu albo wykres) aktualizujemy same
+      // liczby — cel i lekcja zostają zamrożone, żeby strona nie „skakała”.
+      else { refreshStatBoxes(s); refreshBrandLine(s); }
+      refreshStage(s, p);
+    }
+
+    /** Podsumowanie: statystyki, cel, lekcja i podtytuł nagłówka. */
+    function refreshSummary(s, p) {
+      refreshStatBoxes(s);
+      el.goalTarget.textContent = Fmt.pln(p.target);
+      const reached = s.monthlyReturn >= p.target;
+      el.goalBadge.textContent = reached ? 'cel osiągnięty' : 'poniżej celu';
+      el.goalBadge.className = 'badge ' + (reached ? 'ok' : 'no');
+      const ratio = p.target > 0 ? Math.min(1, s.monthlyReturn / p.target) : (reached ? 1 : 0);
+      el.goalBar.style.width = (ratio * 100).toFixed(1) + '%';
+
+      renderLesson(s);
+      keepHeight(el.lessonList);
+      keepHeight(el.goalText);
+
+      if (state.targetMonth === null) {
+        el.goalText.innerHTML = 'Cel <b>' + Fmt.pln(p.target) + '</b> nie zostanie osiągnięty w horyzoncie <b>' +
+          state.horizonYears + ' lat</b> przy wpłatach ' + Fmt.pln(p.contribution) + ' zł/mies. i stopie ' + p.annualPct + '%.';
+      } else {
+        el.goalText.innerHTML = 'Cel osiągnięty w: <b>' + Dates.long(state.targetMonth) + '</b> (' + Dates.mmYyyy(state.targetMonth) +
+          ', miesiąc ' + state.targetMonth + ') — to <b>' + Dates.years(state.targetMonth) + ' lat</b> od startu, w <b>' +
+          Math.floor(ageAtMonth(state.targetMonth)) + '. roku życia</b>. ' +
+          (reached ? 'Obecny kapitał już go pokrywa.' : 'Do celu brakuje <b>' + Fmt.pln(p.target - s.monthlyReturn) + '</b> miesięcznie.');
+      }
+      el.goalText.innerHTML += '<br>Na kuli: <b>rdzeń</b> = ' + Fmt.pln(s.coreValue) + ' Twoich wkładów, <b>warstwa zewnętrzna</b> = ' +
+        Fmt.pln(s.outerValue) + ' odsetek.';
+
+      refreshBrandLine(s);
+    }
+
+    /** Cztery kafelki z liczbami nad wykresem. */
+    function refreshStatBoxes(s) {
+      el.statContributed.textContent = Fmt.pln(s.invested); // wpłaty + kapitał początkowy
+      el.statReturns.textContent = Fmt.pln(s.returns);
+      el.statCapital.textContent = Fmt.pln(s.balance);
+      el.statMonthly.textContent = Fmt.pln2(s.monthlyReturn);
+    }
+
+    /** Podtytuł nagłówka: jedno konkretne zdanie, które streszcza całą symulację. */
+    function refreshBrandLine(s) {
+      const yrsNow = state.month >= 12 ? (Math.round(state.month / 12 * 10) / 10).toFixed(1).replace('.', ',') + ' lat' : state.month + ' mies.';
+      el.brandSub.innerHTML = 'Procent składany w pigułce: po <b>' + yrsNow + '</b> masz <b>' + Fmt.pln(s.balance) +
+        '</b>, choć wpłaciłeś tylko <b>' + Fmt.pln(s.invested) + '</b>.';
+      keepHeight(el.brandSub);   // podpis nie zmienia wysokości nagłówka
+    }
+
+    /** Scena: nagłówek, „okienko” kapitału i wpłaty, oś czasu, kula i wykres. */
+    function refreshStage(s, p) {
+      if (el.chipAge) el.chipAge.textContent = Math.floor(ageAtMonth(state.month)) + ' lat';
+      refreshAgeUI();
+
+      el.stageDate.textContent = Dates.ddMmYyyy(state.month);
+      el.stageSub.textContent = 'Miesiąc ' + state.month + ' · ' + Dates.long(state.month);
+      el.hudCapital.textContent = Fmt.pln(s.balance);
+      el.hudMonth.textContent = String(state.month);
+      // „okienko” — co wpada do kuli w tym miesiącu (widoczne od samego początku)
+      el.hudFlowIn.textContent = '+' + Fmt.pln(p.contribution);
+      el.hudFlowOut.textContent = '+' + Fmt.pln(s.interest || 0);
+
+      el.tlDate.textContent = Dates.ddMmYyyy(state.month);
+      el.tlMonth.textContent = String(state.month);
+      el.tlYears.textContent = Dates.years(state.month);
+      el.timeline.value = String(state.month);
+      panelFromView();   // okienko na scenie zawsze pokazuje to samo co pasek ustawień
+      updatePlayLabel(); // „Symulacja” / „Pauza” / „Wznów” zależnie od stanu
+
+      const progress = pathProgress(state.month);
+      Scene.applyState({
+        capital: s.balance,
+        contribution: p.contribution,
+        flowIn: p.contribution,      // co wpłacamy w tym miesiącu
+        flowOut: s.interest || 0,    // ile odsetek kapitał zarobił w tym miesiącu
+        progress: progress,
+        month: state.month,
+        core: s.core,
+        outer: s.outer,
+        milestones: state.milestones,
+        horizon: H(),
+        rulerStep: state.rulerStep || 10
+      });
+      drawChart();
+    }
+
+
+    /** Pozycja kuli na zboczu: łagodna nieliniowość, by początek nie był zbyt „płaski”. */
+    function pathProgress(month) {
+      const t = month / H();
+      return Math.pow(t, 0.8);
+    }
+
+    /* --------------------------------------------------------------- wykres --- */
+    /**
+     * Panel dydaktyczny: kilka konkretnych zdań z liczbami, które tłumaczą,
+     * CO się dzieje z pieniędzmi (procent składany) — dla osoby, która nie
+     * oszczędza świadomie, liczby mówią więcej niż wykres.
+     */
+    function renderLesson(s) {
+      const ul = el.lessonList;
+      if (!ul) return;
+      const p = viewParams();
+      const yrs = (state.month / 12);
+      const yrsTxt = yrs >= 1 ? (Math.round(yrs * 10) / 10).toFixed(1).replace('.', ',') + ' lat' : state.month + ' mies.';
+      const items = [];
+
+      // 1) stan obecny — jedno zdanie z konkretnymi liczbami + wiek
+      items.push('Wpłacasz <b>' + Fmt.pln(p.contribution) + '</b> miesięcznie. Po <b>' + yrsTxt + '</b> masz <b>' +
+        Fmt.pln(s.balance) + '</b> — a będziesz miał <b>' + fmtAge(ageAtMonth(state.month)) + '</b>.');
+
+      // 2) rozbicie kapitału na wkłady i odsetki
+      items.push('Z tego <b>' + Fmt.pln(s.invested) + '</b> to Twoje wpłaty, a <b class="hi">' + Fmt.pln(s.returns) +
+        '</b> to odsetki.');
+
+      // 3) MECHANIZM: ile daje kapitalizacja (odsetki od odsetek)
+      if (s.compoundBonus > 1) {
+        items.push('Gdyby procent liczył się <b>tylko od Twoich wpłat</b>, miałbyś ' + Fmt.pln(s.invested + s.simpleReturns) +
+          '. <b class="hi">Procent składany daje ' + Fmt.pln(s.compoundBonus) + ' więcej</b> — bo odsetki też zarabiają.');
+      } else {
+        items.push('Na razie procent liczy się <b>tylko od Twoich wpłat</b> — na kapitalizację (odsetki od odsetek) ' +
+          'trzeba poczekać.');
+      }
+
+      // 4) przełom + reguła „podwajania”
+      if (state.breakMonth !== null && state.breakMonth !== undefined && state.breakMonth <= state.month) {
+        items.push('Odsetki przewyższają Twoje wpłaty od <b>' + Dates.years(state.breakMonth) + ' roku</b>. Przy ' +
+          p.annualPct + '% kapitał podwaja się co ok. <b>' + Math.round(72 / Math.max(0.1, p.annualPct)) + ' lat</b>.' +
+          (state.cumBreakMonth !== null && state.cumBreakMonth !== undefined
+            ? ' Odsetki spłacają wszystkie wpłaty od <b>' + Dates.years(state.cumBreakMonth) + ' roku</b>.' : ''));
+      } else if (p.contribution > 0) {
+        items.push('Odsetki są jeszcze mniejsze od Twoich wpłat — przewyższą je po <b>' +
+          (state.breakMonth === null ? '50 latach' : Dates.years(state.breakMonth) + ' roku') + '</b>.');
+      }
+
+      // 5) horyzont inwestycyjny — ile kapitału i ile lat życia (zawsze jeden punkt = stała wysokość)
+      const last = state.model.series[H()];
+      const mult = last.invested > 0 ? last.balance / last.invested : 0;
+      items.push('Za <b>' + state.horizonYears + ' lat</b> będziesz miał <b>' + fmtAge(ageAtMonth(H())) +
+        '</b>, a kapitał sięgnie <b>' + Fmt.pln(last.balance) + '</b> — <b>' +
+        (mult > 0 ? mult.toFixed(1).replace('.', ',') + '×' : '—') + '</b> więcej niż wpłacisz.');
+
+      ul.innerHTML = items.map(function (t) { return '<li>' + t + '</li>'; }).join('');
+    }
+
+    /* v15: geometria wykresu (do chwytania kropki) i lista obszarów podpowiedzi */
+    const chartGeom = { w: 0, h: 0, padL: 52, padR: 12, padT: 26, padB: 28, cw: 0, ch: 0 };
+    const chartHits = [];
+
+    function drawChart() {
+      const c = el.chart;
+      const wrap = c.parentElement;
+      const w = Math.max(240, wrap.clientWidth);
+      const h = 180;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      c.width = Math.round(w * dpr);
+      c.height = Math.round(h * dpr);
+      c.style.height = h + 'px';
+      const g = c.getContext('2d');
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.clearRect(0, 0, w, h);
+
+      const series = state.model.series;
+      // v14x: miejsce na podpisy osi (Y — kapitał, X — lata kalendarzowe)
+      const padL = 52, padR = 12, padT = 26, padB = 28;
+      const cw = w - padL - padR, ch = h - padT - padB;
+      // v15: geometria wykresu zapamiętana (chwytanie kropki) + lista podpowiedzi
+      chartGeom.w = w; chartGeom.h = h; chartGeom.padL = padL; chartGeom.padR = padR;
+      chartGeom.padT = padT; chartGeom.padB = padB; chartGeom.cw = cw; chartGeom.ch = ch;
+      chartHits.length = 0;
+      const maxV = Math.max(1, series[H()].balance);
+      // skala Y: równe, „ładne” wartości (0, 500 tys., 1 mln, 1,5 mln …)
+      const yStep = niceStep(maxV, 4);
+      const yMax = Math.ceil(maxV / yStep) * yStep;
+      const X = function (m) { return padL + (m / H()) * cw; };
+      const Y = function (v) { return padT + ch - (v / yMax) * ch; };
+
+      // --- oś Y: siatka + podpisy ---
+      g.font = '10px system-ui, sans-serif';
+      g.textAlign = 'right';
+      g.textBaseline = 'middle';
+      for (let v = 0; v <= yMax + 1e-6; v += yStep) {
+        const y = Y(v);
+        g.strokeStyle = v === 0 ? 'rgba(255,255,255,.18)' : 'rgba(255,255,255,.07)';
+        g.lineWidth = 1;
+        g.beginPath(); g.moveTo(padL, y); g.lineTo(w - padR, y); g.stroke();
+        g.fillStyle = 'rgba(255,255,255,.5)';
+        g.fillText(v === 0 ? '0' : Fmt.compact(v), padL - 7, y);
+      }
+      // tytuł osi Y
+      g.textAlign = 'left';
+      g.textBaseline = 'alphabetic';
+      g.fillStyle = 'rgba(255,255,255,.62)';
+      g.font = '600 10px system-ui, sans-serif';
+      g.fillText('kapitał (zł)', 6, padT - 9);
+
+      // --- oś X: lata kalendarzowe ---
+      const startYear = Dates.getStart().getFullYear();
+      const totalYears = H() / 12;
+      const xStep = niceStep(totalYears, 4);
+      g.font = '10px system-ui, sans-serif';
+      g.textAlign = 'center';
+      g.textBaseline = 'top';
+      for (let yy = 0; yy <= totalYears + 1e-9; yy += xStep) {
+        const x = X(Math.round(yy * 12));
+        if (x > w - padR - 12) break;          // ostatnia etykieta zostaje w wykresie
+        g.fillStyle = 'rgba(255,255,255,.5)';
+        g.fillText(String(startYear + Math.round(yy)), x, padT + ch + 6);
+      }
+      // tytuł osi X
+      g.textAlign = 'right';
+      g.textBaseline = 'alphabetic';
+      g.fillStyle = 'rgba(255,255,255,.62)';
+      g.font = '600 10px system-ui, sans-serif';
+      g.fillText('lata kalendarzowe', w - padR, h - 3);
+
+      // --- pole 1: odsetki (złote) — między linią wkładów a linią kapitału ---
+      g.beginPath();
+      for (let m = 0; m <= H(); m += 4) g.lineTo(X(m), Y(series[m].balance));
+      for (let m = H(); m >= 0; m -= 4) g.lineTo(X(m), Y(series[m].invested));
+      g.closePath();
+      const ag = g.createLinearGradient(0, padT, 0, padT + ch);
+      ag.addColorStop(0, 'rgba(246,196,99,.55)');
+      ag.addColorStop(1, 'rgba(246,196,99,.12)');
+      g.fillStyle = ag;
+      g.fill();
+
+      // --- pole 2: twoje wkłady (miętowe) — od zera do linii wkładów ---
+      g.beginPath();
+      g.moveTo(X(0), Y(0));
+      for (let m = 1; m <= H(); m += 4) g.lineTo(X(m), Y(series[m].invested));
+      g.lineTo(X(H()), Y(0));
+      g.closePath();
+      const ag2 = g.createLinearGradient(0, padT, 0, padT + ch);
+      ag2.addColorStop(0, 'rgba(95,227,192,.34)');
+      ag2.addColorStop(1, 'rgba(95,227,192,.03)');
+      g.fillStyle = ag2;
+      g.fill();
+
+      // linia wkładów (granica obu pól)
+      g.beginPath();
+      for (let m = 0; m <= H(); m += 4) {
+        const x = X(m), y = Y(series[m].invested);
+        if (m === 0) g.moveTo(x, y); else g.lineTo(x, y);
+      }
+      g.strokeStyle = 'rgba(246,196,99,.95)';
+      g.lineWidth = 1.6;
+      g.stroke();
+
+      // linia kapitału
+      g.beginPath();
+      for (let m = 0; m <= H(); m += 4) {
+        const x = X(m), y = Y(series[m].balance);
+        if (m === 0) g.moveTo(x, y); else g.lineTo(x, y);
+      }
+      g.strokeStyle = '#5fe3c0';
+      g.lineWidth = 2;
+      g.stroke();
+
+      // marker miesiąca osiągnięcia celu (podpis u dołu, żeby nie kolidował
+      // z trójkątem ▲ i rombem ◆ u góry wykresu)
+      if (state.targetMonth !== null) {
+        const x = X(state.targetMonth);
+        g.strokeStyle = 'rgba(255,255,255,.45)';
+        g.setLineDash([3, 3]);
+        g.beginPath(); g.moveTo(x, padT - 4); g.lineTo(x, padT + ch); g.stroke();
+        g.setLineDash([]);
+        g.font = '10px system-ui, sans-serif';
+        const tw = g.measureText('cel').width;
+        const right = x > w - 70;
+        const bx = right ? x - 5 - tw : x + 1;
+        g.fillStyle = 'rgba(6,11,26,.85)';
+        g.fillRect(bx - 2, padT + ch - 15, tw + 4, 13);
+        g.fillStyle = 'rgba(255,255,255,.7)';
+        g.textAlign = 'left';
+        g.textBaseline = 'alphabetic';
+        g.fillText('cel', bx, padT + ch - 5);
+        chartHits.push({
+          x: x, y: padT + ch - 5, r: 10, title: 'Cel osiągnięty',
+          text: 'Miesiąc <b>' + state.targetMonth + '</b> (' + Dates.mmYyyy(state.targetMonth) +
+            ') — kapitał pozwala już wypłacać <b>' + Fmt.pln(state.params.target || 0) + ' zł</b> miesięcznie.'
+        });
+      }
+
+      // marker bieżącego miesiąca (kropka, którą można chwycić i przeciągnąć)
+      const cx = X(state.month);
+      g.strokeStyle = '#ffffff';
+      g.lineWidth = 1.5;
+      g.beginPath(); g.moveTo(cx, padT - 6); g.lineTo(cx, padT + ch); g.stroke();
+      g.fillStyle = '#ffffff';
+      g.beginPath(); g.arc(cx, Y(series[state.month].balance), 3.5, 0, Math.PI * 2); g.fill();
+      // obwódka kropki (delikatna zieleń = sygnał „można przeciągnąć”)
+      g.strokeStyle = 'rgba(87,217,138,.9)';
+      g.lineWidth = 1.4;
+      g.beginPath(); g.arc(cx, Y(series[state.month].balance), 6.5, 0, Math.PI * 2); g.stroke();
+      chartHits.push({
+        x: cx, y: Y(series[state.month].balance), r: 14, title: 'Bieżący miesiąc',
+        text: 'Miesiąc <b>' + state.month + '</b> (' + Dates.mmYyyy(state.month) + ') — ' +
+          Dates.years(state.month) + ' lat od startu.<br>Chwyć kropkę albo kliknij wykres, aby przesunąć czas.'
+      });
+
+      // --- podpisy wewnątrz pól (to one jest kluczowe do zrozumienia wykresu) ---
+      g.font = '600 11px system-ui, sans-serif';
+      g.textAlign = 'center';
+      const mLab = Math.round(H() * 0.72);
+      if (series[mLab].balance - series[mLab].invested > maxV * 0.12) {
+        g.fillStyle = 'rgba(255,236,196,.92)';
+        g.fillText('odsetki', X(mLab), (Y(series[mLab].balance) + Y(series[mLab].invested)) / 2 + 4);
+      }
+      const mLab2 = Math.round(H() * 0.3);
+      if (series[mLab2].invested > maxV * 0.12) {
+        g.fillStyle = 'rgba(214,255,244,.9)';
+        g.fillText('twoje wkłady', X(mLab2), Y(series[mLab2].invested) + 16);
+      }
+
+      // --- linia „gdyby procent liczył się tylko od wpłat” (bez kapitalizacji) ---
+      g.beginPath();
+      for (let m = 0; m <= H(); m += 4) {
+        const x = X(m), y = Y(series[m].invested + series[m].simpleReturns);
+        if (m === 0) g.moveTo(x, y); else g.lineTo(x, y);
+      }
+      g.setLineDash([2, 4]);
+      g.strokeStyle = 'rgba(255,255,255,.45)';
+      g.lineWidth = 1.2;
+      g.stroke();
+      g.setLineDash([]);
+
+      // --- znacznik A (▲): miesięczne odsetki przewyższają miesięczną wpłatę ---
+      if (state.breakMonth !== null && state.breakMonth !== undefined) {
+        const x = X(state.breakMonth);
+        g.setLineDash([2, 3]);
+        g.strokeStyle = 'rgba(246,196,99,.55)';
+        g.lineWidth = 1;
+        g.beginPath(); g.moveTo(x, padT); g.lineTo(x, padT + ch); g.stroke();
+        g.setLineDash([]);
+        g.beginPath();
+        g.moveTo(x, padT + 1); g.lineTo(x - 4, padT - 6); g.lineTo(x + 4, padT - 6);
+        g.closePath();
+        g.fillStyle = 'rgba(246,196,99,.95)';
+        g.fill();
+        const sA = state.model.series[state.breakMonth];
+        chartHits.push({
+          x: x, y: padT - 3, r: 10, title: '▲ Odsetki przewyższają wpłatę',
+          text: 'Miesiąc <b>' + state.breakMonth + '</b> (' + Dates.mmYyyy(state.breakMonth) +
+            ') — miesięczne odsetki (' + Fmt.pln2(sA.monthlyReturn) + ' zł) są już wyższe niż wpłata (' +
+            Fmt.pln(contributionAtMonth(state.breakMonth)) + ' zł).'
+        });
+      }
+
+      // --- znacznik B (◆): skumulowane odsetki przewyższają wszystkie wpłaty ---
+      if (state.cumBreakMonth !== null && state.cumBreakMonth !== undefined) {
+        const x = X(state.cumBreakMonth);
+        g.setLineDash([2, 3]);
+        g.strokeStyle = 'rgba(139,124,255,.6)';
+        g.lineWidth = 1;
+        g.beginPath(); g.moveTo(x, padT); g.lineTo(x, padT + ch); g.stroke();
+        g.setLineDash([]);
+        g.beginPath();
+        g.moveTo(x, padT - 8); g.lineTo(x + 4.5, padT - 3.5); g.lineTo(x, padT + 1);
+        g.lineTo(x - 4.5, padT - 3.5); g.closePath();
+        g.fillStyle = 'rgba(160,146,255,.95)';
+        g.fill();
+        const sB = state.model.series[state.cumBreakMonth];
+        chartHits.push({
+          x: x, y: padT - 4, r: 10, title: '◆ Odsetki spłacają wszystkie wpłaty',
+          text: 'Miesiąc <b>' + state.cumBreakMonth + '</b> (' + Dates.mmYyyy(state.cumBreakMonth) +
+            ') — odsetki zgromadzone od startu (' + Fmt.pln(sB.returns) + ' zł) przewyższyły wszystkie wpłaty (' +
+            Fmt.pln(sB.invested) + ' zł).'
+        });
+      }
+
+      // --- v15: ZDARZENIA — zmiany parametrów bieżących (zielone znaczniki u dołu)
+      (state.events || []).forEach(function (ev) {
+        const x = X(ev.month);
+        g.setLineDash([1, 3]);
+        g.strokeStyle = 'rgba(87,217,138,.45)';
+        g.lineWidth = 1;
+        g.beginPath(); g.moveTo(x, padT); g.lineTo(x, padT + ch); g.stroke();
+        g.setLineDash([]);
+        g.fillStyle = '#57d98a';
+        g.fillRect(x - 3.5, padT + ch - 9, 7, 7);
+        chartHits.push({ x: x, y: padT + ch - 5, r: 11, title: ev.title, text: ev.text });
+      });
+
+    }
+
+    /* ------------------------------------------------------------------ podpowiedzi --- */
+    /** Pokazuje podpowiedź (title + tekst z HTML) w miejscu kursora. */
+    function showTip(title, text, x, y) {
+      const t = el.tip;
+      if (!t) return;
+      t.innerHTML = '<span class="t-head">' + title + '</span>' + text;
+      t.hidden = false;
+      const r = t.getBoundingClientRect();
+      let left = x + 16, top = y - r.height - 12;
+      if (left + r.width > window.innerWidth - 8) left = x - r.width - 16;
+      if (left < 8) left = 8;
+      if (top < 8) top = y + 18;
+      t.style.left = Math.round(left) + 'px';
+      t.style.top = Math.round(top) + 'px';
+    }
+    function hideTip() { if (el.tip) el.tip.hidden = true; }
+
+    /** Miesiąc wskazywany przez piksel x na wykresie. */
+    function chartMonthAt(px) {
+      const frac = (px - chartGeom.padL) / Math.max(1, chartGeom.cw);
+      return Math.max(0, Math.min(H(), Math.round(frac * H())));
+    }
+
+    /** Najechanie kursorem nad wykres — sprawdzamy znaczniki i pokazujemy opis. */
+    function showChartTip(e) {
+      const c = el.chart;
+      if (!c) return;
+      const r = c.getBoundingClientRect();
+      const px = e.clientX - r.left, py = e.clientY - r.top;
+      let best = null, bestD = 1e9;
+      for (const hit of chartHits) {
+        const d = Math.hypot(px - hit.x, py - hit.y);
+        if (d <= hit.r && d < bestD) { best = hit; bestD = d; }
+      }
+      if (!best) { hideTip(); c.style.cursor = 'ew-resize'; return; }
+      c.style.cursor = 'grab';
+      showTip(best.title, best.text, e.clientX, e.clientY);
+    }
+
+    /**
+     * Wykres podsumowania jest interaktywny: kropkę bieżącego miesiąca można
+     * „chwycić” i przeciągnąć (albo kliknąć wykres), a liczby w kafelkach
+     * nad wykresem aktualizują się już w trakcie przeciągania.
+     */
+    function bindChartInteraction() {
+      const c = el.chart;
+      if (!c) return;
+      let dragging = false;
+
+      const monthAt = function (e) {
+        const r = c.getBoundingClientRect();
+        return chartMonthAt(e.clientX - r.left);
+      };
+      const inPlot = function (e) {
+        const r = c.getBoundingClientRect();
+        const y = e.clientY - r.top;
+        return y >= chartGeom.padT - 10 && y <= chartGeom.padT + chartGeom.ch + 10;
+      };
+
+      c.addEventListener('pointerdown', function (e) {
+        if (e.button !== undefined && e.button !== 0) return;
+        if (!inPlot(e)) return;
+        dragging = true;
+        if (c.setPointerCapture && e.pointerId !== undefined) {
+          try { c.setPointerCapture(e.pointerId); } catch (err) { /* brak wsparcia */ }
+        }
+        setMode('idle');
+        beginScrub();                 // zamrażamy cel i lekcję (brak skakania strony)
+        setMonth(monthAt(e), { silent: true });
+        c.style.cursor = 'grabbing';
+        e.preventDefault();
+      });
+
+      c.addEventListener('pointermove', function (e) {
+        if (dragging) { setMonth(monthAt(e), { silent: true }); return; }
+        showChartTip(e);
+      });
+
+      const finish = function (e) {
+        if (!dragging) return;
+        dragging = false;
+        c.style.cursor = 'ew-resize';
+        if (c.releasePointerCapture && e && e.pointerId !== undefined) {
+          try { c.releasePointerCapture(e.pointerId); } catch (err) { /* brak wsparcia */ }
+        }
+        endScrub();
+      };
+      c.addEventListener('pointerup', finish);
+      c.addEventListener('pointercancel', finish);
+      c.addEventListener('pointerleave', function () { if (!dragging) hideTip(); });
+    }
+
+    /* ----------------------------------------------------------- ustawianie miesiąca --- */
+    function setMonth(m, opts) {
+      opts = opts || {};
+      const prev = state.month;
+      state.month = Math.max(0, Math.min(H(), Math.round(m)));
+      if (state.month > prev && !opts.silent) {
+        const s = state.model.series[state.month];
+        Scene.spawnCollect({
+          coreAdd: s.coreAdd,
+          outerAdd: s.outerAdd,
+          // comiesięczne okienko: co wpłacamy i ile odsetek z tego kapitał zarobił
+          month: state.month,
+          flowIn: viewParams().contribution,
+          flowOut: s.interest || 0
+        });
+      }
+      if (state.month !== prev) refreshAll();
+    }
+
+    /* ------------------------------------------------------------- tryby odtwarzania --- */
+    /**
+     * Obsługa przycisków transportu „Cofaj” (krok −10) i „Przyspiesz” (krok +10):
+     *   • przytrzymanie (pointerdown → pointerup) = przesuwanie ciągłe w danym trybie,
+     *   • krótkie kliknięcie (< 260 ms) = pojedynczy skok o 10 miesięcy,
+     *   • klawiatura (Enter / spacja) = pojedynczy skok.
+     * Dzięki temu te przyciski nie zachowują się jak play/pauza.
+     */
+    function bindTransport(btn, mode, step) {
+      let down = false, t0 = 0;
+      btn.addEventListener('pointerdown', function (e) {
+        if (e.button !== undefined && e.button !== 0) return;
+        down = true; t0 = performance.now();
+        if (e.pointerId !== undefined && btn.setPointerCapture) {
+          try { btn.setPointerCapture(e.pointerId); } catch (err) { /* brak wsparcia — pomijamy */ }
+        }
+        e.preventDefault();
+        if (mode === 'ff' && state.month >= H()) setMonth(0, { silent: true });
+        setMode(mode);
+      });
+      const finish = function () {
+        if (!down) return;
+        down = false;
+        setMode('idle');
+        if (performance.now() - t0 < 260) {
+          setMonth(Math.max(0, Math.min(H(), state.month + step)));
+        }
+      };
+      btn.addEventListener('pointerup', finish);
+      btn.addEventListener('pointercancel', finish);
+      btn.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.code === 'Space') {
+          e.preventDefault();
+          setMode('idle');
+          setMonth(Math.max(0, Math.min(H(), state.month + step)));
+        }
+      });
+    }
+
+    /**
+     * Etykieta przycisku zależy od sytuacji:
+     *  • „▶ Symulacja” — start (miesiąc 0) albo powtórzenie od zera (koniec horyzontu),
+     *  • „⏸ Pauza”      — trwa odtwarzanie,
+     *  • „▶ Wznów”       — wstrzymaliśmy w połowie i chcemy kontynuować od tego miejsca.
+     */
+    function updatePlayLabel() {
+      if (!el.playBtn) return;
+      const atStart = state.month <= 0;
+      const atEnd = state.month >= H();
+      if (state.mode === 'play') {
+        el.playBtn.textContent = '⏸ Pauza';
+        el.playBtn.title = 'Wstrzymaj symulację (spacja)';
+      } else if (!atStart && !atEnd) {
+        el.playBtn.textContent = '▶ Wznów';
+        el.playBtn.title = 'Wznów symulację od miejsca, w którym ją wstrzymaliśmy (spacja). Stosuje też oczekujące zmiany ustawień od teraz.';
+      } else {
+        el.playBtn.textContent = '▶ Symulacja';
+        el.playBtn.title = atEnd
+          ? 'Zacznij symulację od nowa (spacja)'
+          : 'Rozpocznij symulację (spacja)';
+      }
+    }
+
+    function setMode(m) {
+      state.mode = m;
+      state.acc = 0;
+      updatePlayLabel();
+      el.playBtn.classList.toggle('active', m === 'play');
+      el.ffBtn.classList.toggle('active', m === 'ff');
+      el.rewindBtn.classList.toggle('active', m === 'rewind');
+      updateSpeedReadout();
+    }
+
+    /**
+     * Odstęp między tykami (ms). Tryb odtwarzania idzie w naturalnym tempie
+     * (1 miesiąc = TICK_MS / prędkość), a przewijanie/cofanie jest zawsze
+     * 2× szybsze (krok = 10 miesięcy), żeby dało się szybko przeskoczyć dekady.
+     */
+    function tickInterval() {
+      const base = TICK_MS / state.speed;
+      return state.mode === 'play' ? base : Math.max(140, base / 2);
+    }
+
+    function updateSpeedReadout() {
+      const names = { play: 'odtwarzanie', ff: 'przyspieszanie', rewind: 'cofanie', idle: 'pauza' };
+      el.speedValue.textContent = state.speed + '×';
+      if (state.mode === 'idle') {
+        el.speedReadout.textContent = 'Tryb: pauza · prędkość ' + state.speed + '×';
+        return;
+      }
+      const step = state.mode === 'play' ? 1 : FF_STEP;
+      const perSec = (step * 1000) / tickInterval();   // miesięcy na sekundę
+      // wolno → sekundy na miesiąc, szybko → miesiące na sekundę
+      const rate = perSec >= 1
+        ? (Math.round(perSec * 10) / 10).toFixed(1).replace('.', ',') + ' mies./s'
+        : (1 / perSec).toFixed(1).replace('.', ',') + ' s/mies.';   // sekundy na jeden miesiąc
+      el.speedReadout.textContent = names[state.mode] + ' ' + state.speed + '× → ' + step + ' mies./tyk (' + rate + ')';
+    }
+
+    function tick() {
+      if (state.mode === 'play') {
+        if (state.month >= H()) { setMode('idle'); return; }
+        setMonth(state.month + 1);
+      } else if (state.mode === 'ff') {
+        if (state.month >= H()) { setMode('idle'); return; }
+        setMonth(Math.min(H(), state.month + FF_STEP));
+      } else if (state.mode === 'rewind') {
+        if (state.month <= 0) { setMode('idle'); return; }
+        setMonth(Math.max(0, state.month - FF_STEP));
+      }
+    }
+
+    /* ---------------------------------------------------------------- pętla rAF --- */
+    let lastTs = 0;
+    function loop(ts) {
+      const dt = lastTs ? Math.min(0.05, (ts - lastTs) / 1000) : 0.016;
+      lastTs = ts;
+
+      if (state.mode !== 'idle' && state.model) {
+        state.acc += dt * 1000;
+        const interval = tickInterval();
+        let guard = 0;
+        while (state.acc >= interval && guard < 50) {
+          state.acc -= interval;
+          tick();
+          guard++;
+        }
+      }
+
+      Scene.draw(dt);
+      requestAnimationFrame(loop);
+    }
+
+    /* --------------------------------------------------------------- zdarzenia UI --- */
+    /* --- blokada „skakania” strony (v14t) — wspólna dla osi czasu i wykresu ---
+       Zmiana miesiąca potrafi zmienić wysokość podsumowania, a wtedy przeglądarka
+       przesuwa widok. W trakcie przeciągania przywracamy pozycję przewijania
+       i zamrażamy wysokość listy „Co się dzieje”. */
+    let scrubScrollY = 0, scrubScrollLocked = false, lessonFrozen = false;
+    const lockScroll = function () {
+      scrubScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+      scrubScrollLocked = true;
+    };
+    const unlockScroll = function () { scrubScrollLocked = false; };
+    window.addEventListener('scroll', function () {
+      if (!scrubScrollLocked) return;
+      const y = window.scrollY || document.documentElement.scrollTop || 0;
+      if (Math.abs(y - scrubScrollY) > 1) window.scrollTo(0, scrubScrollY);
+    });
+    const freezeLesson = function () {
+      const ul = el.lessonList;
+      if (!ul || lessonFrozen) return;
+      const h = ul.getBoundingClientRect().height;
+      if (!h) return;
+      ul.style.height = h + 'px';
+      ul.style.overflow = 'hidden';
+      lessonFrozen = true;
+    };
+    const unfreezeLesson = function () {
+      const ul = el.lessonList;
+      if (!ul) return;
+      ul.style.height = '';
+      ul.style.overflow = '';
+      lessonFrozen = false;
+    };
+    /** Start przeciągania (oś czasu albo wykres): zamrażamy podsumowanie. */
+    function beginScrub() {
+      state.scrubbing = true;   // podsumowanie nie jest przebudowywane (brak skakania)
+      freezeLesson();
+      lockScroll();
+    }
+    /** Koniec przeciągania: odblokowujemy przewijanie i odświeżamy podsumowanie. */
+    function endScrub() {
+      state.scrubbing = false;
+      unfreezeLesson();
+      unlockScroll();
+      refreshAll();
+    }
+
+    /** Podpowiedzi na scenie: chorągiewki wieku i podziałka osi czasu. */
+    function bindSceneTips() {
+      const c = el.scene;
+      if (!c) return;
+      c.addEventListener('pointermove', function (e) {
+        const r = c.getBoundingClientRect();
+        const hit = Scene.hitTest(e.clientX - r.left, e.clientY - r.top);
+        if (!hit) { hideTip(); c.style.cursor = ''; return; }
+        c.style.cursor = 'help';
+        showTip(hit.title, hit.text, e.clientX, e.clientY);
+      });
+      c.addEventListener('pointerleave', function () { hideTip(); c.style.cursor = ''; });
+    }
+
+    function bind() {
+      bindChartInteraction();   // v15: kropkę na wykresie można chwycić i przeciągnąć
+      bindSceneTips();          // v15: opisy chorągiewek wieku i podziałki
+
+      // USTAWIENIA POCZĄTKOWE: to one definiują symulację od miesiąca 0,
+      // więc zmiana działa OD RAZU (widać ją w „okienku” nad wizualizacją).
+      el.contribution.addEventListener('input', function () { applyStripSettings(); });
+      el.capital0.addEventListener('input', function () { applyStripSettings(); });
+      el.target.addEventListener('input', function () { applyStripSettings(); });
+      el.horizonYears.addEventListener('input', function () { applyStripSettings(); });
+      el.annualPct.addEventListener('input', function () {
+        el.annualRange.value = el.annualPct.value;
+        applyStripSettings();
+      });
+      el.annualRange.addEventListener('input', function () {
+        el.annualPct.value = el.annualRange.value;
+        applyStripSettings();
+      });
+
+      // v15: Enter (lub spacja) w polach USTAWIEŃ POCZĄTKOWYCH zatwierdza zmianę
+      // i uruchamia symulację od początku (analogicznie jak „▶ Symulacja”).
+      const restartFromStart = function () {
+        if (!applyStripSettings()) return;
+        setMonth(0, { silent: true });
+        setMode('play');
+      };
+      [el.contribution, el.capital0, el.annualPct, el.target, el.horizonYears, el.annualRange].forEach(function (inp) {
+        if (!inp) return;
+        inp.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ' || e.code === 'Space' || e.code === 'NumpadEnter') {
+            e.preventDefault();          // spacja nie przewija strony
+            restartFromStart();
+          }
+        });
+      });
+      // daty: tylko Enter (spacja w polu daty otwiera kalendarz)
+      [el.startDateInput, el.birthDate].forEach(function (inp) {
+        if (!inp) return;
+        inp.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.code === 'NumpadEnter') {
+            e.preventDefault();
+            restartFromStart();
+          }
+        });
+      });
+
+      // --- okienko parametrów NA wizualizacji jest NIEZALEŻNE od paska:
+      //     zmiana czeka na zatwierdzenie („▶ Symulacja”) i niczego nie psuje
+      //     w ustawieniach początkowych. ---
+      const fromScene = function () {
+        stagePanelParams();
+      };
+      el.spContribution.addEventListener('input', fromScene);
+      el.spDeposit.addEventListener('input', fromScene);
+      el.spAnnual.addEventListener('input', fromScene);
+      el.spToggle.addEventListener('click', function () {
+        const hidden = !el.spBody.hasAttribute('hidden');
+        if (hidden) el.spBody.setAttribute('hidden', ''); else el.spBody.removeAttribute('hidden');
+        el.spToggle.textContent = hidden ? '▸' : '▾';
+        if (!hidden) setMode('idle');   // v14u: rozwinięcie okienka pauzuje symulację
+        syncPanelRect();
+      });
+      // kliknięcie w edytowalne pole też pauzuje symulację
+      [el.spContribution, el.spDeposit, el.spAnnual].forEach(function (inp) {
+        if (inp) inp.addEventListener('focus', function () { setMode('idle'); });
+      });
+      // v14v: Enter lub spacja w polach okienka ZATWIERDZA zmiany — dokładnie tak
+      // jak przycisk „▶ Wznój” (stosuje oczekujące zmiany i wznawia symulację).
+      [el.spContribution, el.spDeposit, el.spAnnual].forEach(function (inp) {
+        if (!inp) return;
+        inp.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ' || e.code === 'Space' || e.code === 'NumpadEnter') {
+            e.preventDefault();          // spacja nie wpisuje się do pola
+            commitPanelChanges();
+          }
+        });
+      });
+
+      // --- data startu (domyślnie dziś, ale edytowalna) ---
+      el.startDateInput.addEventListener('change', function () {
+        const d = parseIsoDate(el.startDateInput.value);
+        if (!d) { el.startDateInput.value = isoDate(Dates.getStart()); return; }
+        setStartDate(d);
+      });
+
+      // --- data urodzenia: z niej liczymy wiek i „kamienie milowe” na scenie ---
+      if (el.birthDate) {
+        el.birthDate.addEventListener('change', function () {
+          if (!setAgeFromBirth(el.birthDate.value)) {
+            if (el.errAge) { el.errAge.textContent = 'Podaj poprawną datę urodzenia (nie z przyszłości).'; el.errAge.hidden = false; }
+            return;
+          }
+          if (el.errAge) el.errAge.hidden = true;
+          refreshAgeUI();
+          refreshAll();
+        });
+      }
+
+      // --- oś czasu: przeciągnięcie na sam początek zeruje wizualizację.
+      //     W trakcie przeciągania (przy trzymanym przycisku myszy) pokazujemy
+      //     podpowiedź „Puść aby wyzerować do ustawień początkowych”.
+      let tlDragging = false;
+      const tlAtStart = function () { return Number(el.timeline.value) === 0; };
+
+      /* v14t: podpowiedź „puść, aby wyzerować” — tuż NAD kropką suwaka,
+         ale zawsze w granicach okna (przy krawędzi przesuwamy ją do środka). */
+      const updateTlHint = function () {
+        if (!el.tlHint) return;
+        const show = tlDragging && tlAtStart();
+        el.tlHint.hidden = !show;
+        if (!show) return;
+        const track = el.tlHint.offsetParent || el.timeline.parentElement;
+        const tr = el.timeline.getBoundingClientRect();
+        const pr = track.getBoundingClientRect();
+        const hw = el.tlHint.offsetWidth / 2;
+        const min = Number(el.timeline.min || 0), max = Number(el.timeline.max || 1);
+        const frac = (Number(el.timeline.value) - min) / Math.max(1, max - min);
+        const thumbX = tr.left + frac * tr.width;          // środek kropki na ekranie
+        let left = thumbX - pr.left;                        // pozycja względem .tl-track
+        const minLeft = 10 + hw - pr.left;                  // lewy brzeg okna
+        const maxLeft = window.innerWidth - 10 - hw - pr.left;
+        el.tlHint.style.left = Math.max(minLeft, Math.min(maxLeft, left)) + 'px';
+      };
+
+      const startTlDrag = function () {
+        tlDragging = true;
+        beginScrub();      // v15: ta sama blokada co przy przeciąganiu wykresu
+        setScrubMode(true); // okienko parametrów: pole „Dopłać” znika na czas przeciągania
+        updateTlHint();
+      };
+      const endTlDrag = function () {
+        if (!tlDragging) return;
+        tlDragging = false;
+        setScrubMode(false);
+        if (tlAtStart() && !isZeroed()) zeroSimulation();
+        endScrub();
+        updateTlHint();
+      };
+      el.timeline.addEventListener('mousedown', startTlDrag);
+      el.timeline.addEventListener('touchstart', startTlDrag);
+      window.addEventListener('mouseup', endTlDrag);
+      window.addEventListener('touchend', endTlDrag);
+      el.timeline.addEventListener('input', function () {
+        setMode('idle');
+        setMonth(Number(el.timeline.value), { silent: true });
+        refreshScrubFields();   // okienko pokazuje parametry obowiązujące teraz
+        updateTlHint();
+        // obsługa klawiatury (strzałki na suwaku) — nie ma „puszczenia”, zerujemy od razu
+        if (!tlDragging && tlAtStart() && !isZeroed()) zeroSimulation();
+      });
+
+      el.playBtn.addEventListener('click', function () {
+        if (state.mode === 'play') { setMode('idle'); return; }
+        // start: najpierw stosujemy oczekujące zmiany (od teraz, nie od początku)
+        if (state.month >= H()) setMonth(0, { silent: true });
+        if (state.pending) applyPendingFromNow();
+        setMode('play');
+      });
+      // „Cofaj” i „Przyspiesz” to transport jak w odtwarzaczu — NIE play/pauza:
+      // przytrzymanie przesuwa symulację ciągle, krótkie kliknięcie robi skok.
+      bindTransport(el.ffBtn, 'ff', 10);
+      bindTransport(el.rewindBtn, 'rewind', -10);
+      // „Stop”: pauza + powrót na początek + wyzerowanie do ustawień początkowych
+      el.stopBtn.addEventListener('click', function () {
+        zeroSimulation();
+      });
+      el.prevBtn.addEventListener('click', function () { setMode('idle'); setMonth(state.month - 1); });
+      el.nextBtn.addEventListener('click', function () { setMode('idle'); setMonth(state.month + 1); });
+
+      // Suwak prędkości (1× – 20×) — wpływa na odtwarzanie, przewijanie i cofanie
+      el.speed.addEventListener('input', function () {
+        state.speed = Number(el.speed.value);
+        el.speedValue.textContent = state.speed + '×';
+        state.acc = 0;
+        updateSpeedReadout();
+      });
+
+      document.addEventListener('keydown', function (e) {
+        // pomijamy, gdy focus jest w polu formularza lub na przycisku (przyciski reagują
+        // na spację natywnie — inaczej odtwarzanie przełączałoby się dwa razy)
+        if (e.target && /input|textarea|select|button/i.test(e.target.tagName)) return;
+        if (e.code === 'Space') { e.preventDefault(); el.playBtn.click(); }
+        else if (e.code === 'ArrowRight') { e.preventDefault(); el.nextBtn.click(); }
+        else if (e.code === 'ArrowLeft') { e.preventDefault(); el.prevBtn.click(); }
+      });
+
+      window.addEventListener('resize', function () {
+        Scene.resize();
+        syncPanelRect();
+        if (state.model) drawChart();
+      });
+    }
+
+    /* ------------------------------------------------------------------- start --- */
+
+    function init() {
+      // data startu: domyślnie dzisiaj, ale użytkownik może ją zmienić
+      el.startDateInput.value = isoDate(TODAY);
+      el.chipStart.textContent = TODAY.toLocaleDateString('pl-PL');
+      // v14u: domyślnie 18 lat (data urodzenia = dziś minus 18 lat)
+      state.user.birth = isoDate(birthForAge(18));
+      setAgeFromBirth(state.user.birth);
+      refreshAgeUI();
+      el.tlStart.textContent = Dates.ddMmYyyy(0);
+      el.tlEnd.textContent = Dates.ddMmYyyy(H());
+      el.timeline.max = String(H());
+      if (el.tlHorizon) el.tlHorizon.textContent = String(H());
+      state.speed = Number(el.speed.value);
+      el.speedValue.textContent = state.speed + '×';
+
+      bind();
+      rebuildModel(false);
+      Scene.resize();
+      syncPanelRect();
+      updateSpeedReadout();
+      requestAnimationFrame(loop);
+    }
+
+    // wystawiamy model na zewnątrz (przydatne do szybkich testów w konsoli)
+    window.SnowballApp = { Simulation: Simulation, state: state, Scene: Scene };
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
+  })();
+})();
+</script>
+</body>
+</html>
